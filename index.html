@@ -60,7 +60,7 @@
         }
         
         .upload-area {
-            padding: 40px;
+            padding: 20px 40px;
             text-align: center;
             border-bottom: 2px solid #f0f0f0;
         }
@@ -68,7 +68,7 @@
         .upload-box {
             border: 3px dashed #667eea;
             border-radius: 12px;
-            padding: 60px 20px;
+            padding: 30px 20px;
             background: #f8f9ff;
             cursor: pointer;
             transition: all 0.3s;
@@ -85,8 +85,8 @@
         }
         
         .upload-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
+            font-size: 36px;
+            margin-bottom: 15px;
         }
         
         input[type="file"] {
@@ -97,13 +97,13 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
+            padding: 6px 15px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 600;
             transition: transform 0.2s, box-shadow 0.2s;
-            margin: 5px;
+            margin: 3px;
         }
         
         .btn:hover {
@@ -123,6 +123,26 @@
             background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
         }
         
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
         .btn-secondary {
             background: #6c757d;
         }
@@ -136,7 +156,7 @@
         }
         
         .controls {
-            padding: 20px 40px;
+            padding: 15px 30px;
             background: #f8f9fa;
             border-bottom: 2px solid #e9ecef;
             display: none;
@@ -148,10 +168,10 @@
         
         .control-group {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         .control-group:last-child {
@@ -162,7 +182,7 @@
             width: 100%;
             height: 1px;
             background: #dee2e6;
-            margin: 10px 0;
+            margin: 8px 0;
         }
         
         .table-container {
@@ -228,14 +248,19 @@
         
         .column-header {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 5px;
+        }
+        
+        .column-header-text {
+            text-align: center;
         }
         
         .column-controls {
             display: flex;
             gap: 3px;
+            justify-content: center;
         }
         
         .col-btn {
@@ -255,11 +280,11 @@
         }
         
         input[type="text"] {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 2px solid #dee2e6;
             border-radius: 6px;
-            font-size: 14px;
-            width: 200px;
+            font-size: 13px;
+            width: 150px;
         }
         
         input[type="text"]:focus {
@@ -300,13 +325,21 @@
         
         <div class="controls" id="controls">
             <div class="control-group">
-                <button class="btn btn-primary" id="creditCardBtn">💳 신용카드매입자료</button>
-                <button class="btn btn-info" id="generalSlipBtn">📄 일반전표전송</button>
+                <button class="btn btn-warning" id="undoBtn" disabled>↩️ 실행취소</button>
+                <button class="btn btn-warning" id="redoBtn" disabled>↪️ 다시실행</button>
+            </div>
+            <div class="separator"></div>
+            <div class="control-group">
+                <button class="btn btn-primary" id="creditCardBtn">📄 일반전표전송</button>
+                <button class="btn btn-info" id="generalSlipBtn">💳 신용카드매입자료</button>
             </div>
             <div class="separator"></div>
             <div class="control-group">
                 <input type="text" id="newColumnName" placeholder="새 열 이름">
-                <button class="btn btn-success" id="addColumnBtn">➕ 열 추가</button>
+                <button class="btn btn-success" id="addColumnBtn">➕열 추가</button>
+            </div>
+            <div class="separator"></div>
+            <div class="control-group">
                 <button class="btn btn-secondary" id="downloadBtn">💾 다운로드</button>
             </div>
         </div>
@@ -325,6 +358,10 @@
         let headers = [];
         let detectedCard = '';
         
+        // 실행취소/다시실행을 위한 히스토리
+        let history = [];
+        let historyIndex = -1;
+        
         const fileInput = document.getElementById('fileInput');
         const uploadBox = document.getElementById('uploadBox');
         const controls = document.getElementById('controls');
@@ -335,6 +372,8 @@
         const cardInfo = document.getElementById('cardInfo');
         const creditCardBtn = document.getElementById('creditCardBtn');
         const generalSlipBtn = document.getElementById('generalSlipBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
         
         // 카드사 판별 규칙
         const cardPatterns = {
@@ -383,6 +422,64 @@
         downloadBtn.addEventListener('click', downloadCSV);
         creditCardBtn.addEventListener('click', processCreditCard);
         generalSlipBtn.addEventListener('click', processGeneralSlip);
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        
+        // 히스토리 관리 함수
+        function saveState() {
+            // 현재 상태를 히스토리에 저장
+            const state = {
+                headers: JSON.parse(JSON.stringify(headers)),
+                csvData: JSON.parse(JSON.stringify(csvData)),
+                detectedCard: detectedCard
+            };
+            
+            // 현재 인덱스 이후의 히스토리 삭제 (새로운 작업 시)
+            history = history.slice(0, historyIndex + 1);
+            
+            // 새 상태 추가
+            history.push(state);
+            historyIndex++;
+            
+            // 최대 50개 히스토리 유지
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateUndoRedoButtons();
+        }
+        
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreState(history[historyIndex]);
+                console.log('실행취소:', historyIndex);
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                restoreState(history[historyIndex]);
+                console.log('다시실행:', historyIndex);
+            }
+        }
+        
+        function restoreState(state) {
+            headers = JSON.parse(JSON.stringify(state.headers));
+            csvData = JSON.parse(JSON.stringify(state.csvData));
+            detectedCard = state.detectedCard;
+            
+            renderTable();
+            updateStats();
+            updateUndoRedoButtons();
+        }
+        
+        function updateUndoRedoButtons() {
+            undoBtn.disabled = historyIndex <= 0;
+            redoBtn.disabled = historyIndex >= history.length - 1;
+        }
         
         function handleFile(file) {
             Papa.parse(file, {
@@ -391,17 +488,25 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     if (results.data.length > 0) {
+                        // 기존 작업 모두 초기화
                         headers = results.meta.fields;
                         csvData = results.data;
+                        history = [];
+                        historyIndex = -1;
                         
                         // 카드사 판별
                         detectCardType();
+                        
+                        // 초기 상태 저장
+                        saveState();
                         
                         renderTable();
                         controls.classList.add('active');
                         tableContainer.classList.add('active');
                         stats.classList.add('active');
                         updateStats();
+                        
+                        console.log('새 파일 로드 완료 - 기존 작업 초기화됨');
                     }
                 },
                 error: function(error) {
@@ -458,7 +563,9 @@
             
             for (let i = 0; i < headers.length; i++) {
                 const header = headers[i];
-                html += '<th><div class="column-header"><span>' + header + '</span><div class="column-controls">';
+                html += '<th><div class="column-header">';
+                html += '<div class="column-header-text">' + header + '</div>';
+                html += '<div class="column-controls">';
                 
                 if (i > 0) {
                     html += '<button class="col-btn move-left" data-index="' + i + '">←</button>';
@@ -545,6 +652,7 @@
                 csvData[i][newName] = '';
             }
             
+            saveState();
             renderTable();
             updateStats();
             document.getElementById('newColumnName').value = '';
@@ -570,6 +678,7 @@
             console.log('New headers:', headers);
             console.log('Rendering table...');
             
+            saveState();
             renderTable();
             updateStats();
             
@@ -584,6 +693,7 @@
             headers[index] = headers[newIndex];
             headers[newIndex] = temp;
             
+            saveState();
             renderTable();
         }
         
@@ -641,6 +751,7 @@
             // 빈 데이터로 초기화
             csvData = [];
             
+            saveState();
             renderTable();
             updateStats();
             
@@ -720,6 +831,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('신한카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
             }
             // 삼성카드 데이터 매핑
             else if (detectedCard === '삼성카드' && csvData.length > 0) {
@@ -764,12 +876,14 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('삼성카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
             }
             else {
                 // 지원되지 않는 카드사이거나 데이터가 없으면 빈 템플릿
                 headers = newHeaders;
                 csvData = [];
                 console.log('일반전표전송 빈 템플릿으로 변경');
+                saveState();
             }
             
             renderTable();
