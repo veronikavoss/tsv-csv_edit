@@ -677,7 +677,7 @@
                 '의제.재활용적요번호 (차 변)'
             ];
             
-            // 신한카드 데이터가 있는 경우 매핑
+            // 신한카드 데이터 매핑
             if (detectedCard === '신한카드' && csvData.length > 0) {
                 console.log('신한카드 데이터를 일반전표전송 형식으로 매핑 중...');
                 
@@ -685,41 +685,22 @@
                 
                 for (let i = 0; i < csvData.length; i++) {
                     const row = csvData[i];
+                    const rowNum = i + 2;
                     const newRow = {};
                     
-                    // 매핑 규칙 적용
                     newRow['카드종류             (1자리)'] = '1';
-                    newRow['신용카드사명           (30자리이내)'] = '신한카드';
+                    newRow['신용카드사명           (30자리이내)'] = '="신한카드"';
                     newRow['신용카드번호                   (19자리이내)'] = row['이용카드'] || '';
                     newRow['승인일자'] = row['이용일'] || '';
                     newRow['사업자등록번호'] = row['사업자번호'] || '';
                     newRow['거래처명 (15자리이내)'] = row['이용가맹점'] || '';
                     newRow['거래처유형'] = '';
-                    
-                    // 이용금액 가져오기
-                    const amount = parseFloat((row['이용금액'] || '0').toString().replace(/,/g, '')) || 0;
-                    const taxType = '57';
-                    const isDeductible = taxType === '57';
-                    
-                    // 공급가액 계산 (부가세 공제일 때만)
-                    if (isDeductible) {
-                        newRow['공급가액'] = Math.round(amount / 1.1);
-                    } else {
-                        newRow['공급가액'] = '';
-                    }
-                    
-                    // 세액 계산 (부가세 공제일 때만)
-                    if (isDeductible) {
-                        const supplyAmount = Math.round(amount / 1.1);
-                        newRow['세액'] = amount - supplyAmount;
-                    } else {
-                        newRow['세액'] = '';
-                    }
-                    
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
                     newRow['봉사료'] = '0';
                     newRow['합계금액'] = row['이용금액'] || '';
-                    newRow['부가세공제여부'] = isDeductible ? '공제' : '불공제';
-                    newRow['부가세유형                (2자리)'] = taxType;
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
                     newRow['계정과목'] = '';
                     newRow['품    목(적    요) (30자리이내)'] = '';
                     newRow['수 량'] = '';
@@ -738,10 +719,54 @@
                 
                 headers = newHeaders;
                 csvData = newData;
+                console.log('신한카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+            }
+            // 삼성카드 데이터 매핑
+            else if (detectedCard === '삼성카드' && csvData.length > 0) {
+                console.log('삼성카드 데이터를 일반전표전송 형식으로 매핑 중...');
                 
-                console.log('신한카드 데이터 매핑 완료:', csvData.length, '행');
-            } else {
-                // 신한카드가 아니거나 데이터가 없으면 빈 템플릿
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="삼성카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['이용일'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['이용금액(원)'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('삼성카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+            }
+            else {
+                // 지원되지 않는 카드사이거나 데이터가 없으면 빈 템플릿
                 headers = newHeaders;
                 csvData = [];
                 console.log('일반전표전송 빈 템플릿으로 변경');
