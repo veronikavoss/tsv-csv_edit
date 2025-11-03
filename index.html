@@ -357,6 +357,7 @@
         let csvData = [];
         let headers = [];
         let detectedCard = '';
+        let currentFormat = '원본'; // 현재 선택된 형식 추적
         
         // 실행취소/다시실행을 위한 히스토리
         let history = [];
@@ -421,8 +422,8 @@
         
         addColumnBtn.addEventListener('click', addColumn);
         downloadBtn.addEventListener('click', downloadCSV);
-        creditCardBtn.addEventListener('click', processCreditCard);
-        generalSlipBtn.addEventListener('click', processGeneralSlip);
+        creditCardBtn.addEventListener('click', processGeneralSlip);
+        generalSlipBtn.addEventListener('click', processCreditCard);
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
         
@@ -712,6 +713,23 @@
         }
         
         function downloadCSV() {
+            // 현재 날짜와 시간 생성 (YYYYMMDD_HHMMSS 형식)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const dateTime = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+            
+            // 카드사 이름 (없으면 '미분류')
+            const cardName = detectedCard || '미분류';
+            
+            // 파일 이름 생성: 날짜시간_카드사이름_형식.csv
+            const fileName = `${dateTime}_${cardName}_${currentFormat}.csv`;
+            
             const csv = Papa.unparse({
                 fields: headers,
                 data: csvData
@@ -720,8 +738,10 @@
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'edited_data.csv';
+            link.download = fileName;
             link.click();
+            
+            console.log('다운로드 파일명:', fileName);
         }
         
         function updateStats() {
@@ -764,6 +784,8 @@
             
             // 빈 데이터로 초기화
             csvData = [];
+            
+            currentFormat = '신용카드매입자료'; // 형식 변경 추적
             
             saveState();
             renderTable();
@@ -845,6 +867,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('신한카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // 삼성카드 데이터 매핑
@@ -890,6 +913,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('삼성카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // KB국민카드 데이터 매핑
@@ -935,6 +959,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('KB국민카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // BNK경남은행 데이터 매핑
@@ -980,6 +1005,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('BNK경남은행 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // NH농협카드 데이터 매핑
@@ -1025,6 +1051,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('NH농협카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             else {
@@ -1032,6 +1059,7 @@
                 headers = newHeaders;
                 csvData = [];
                 console.log('일반전표전송 빈 템플릿으로 변경');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             
