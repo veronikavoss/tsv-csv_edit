@@ -3,414 +3,1072 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV 변환 도구 (일괄 처리)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <title>CSV 편집 도구</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", helvetica, "Apple SD Gothic Neo", sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            background-color: #f4f7f6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-        }
-        #container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 30px;
-            width: 100%;
-            max-width: 600px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-top: 0;
+            padding: 20px;
         }
         
-        /* [추가] 드래그 앤 드롭 영역 */
-        #dropZone {
-            border: 2px dashed #ddd;
-            border-radius: 8px;
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 30px;
             text-align: center;
-            background-color: #fafafa;
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-        #dropZone.dragover {
-            background-color: #e8f0fe;
-            border-color: #007bff;
-        }
-        #dropZone p {
-            color: #666;
-            font-size: 1.1rem;
-            margin: 0 0 20px 0;
         }
         
-        /* [추가] 버튼 그룹 */
-        .button-group {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
         }
-        .btn {
-            padding: 12px 20px;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        #fileSelectBtn {
-            background-color: #5c677d;
-            color: white;
-        }
-        #fileSelectBtn:hover { background-color: #495366; }
         
-        #folderSelectBtn {
-            background-color: #5c677d;
-            color: white;
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
         }
-        #folderSelectBtn:hover { background-color: #495366; }
-
-        /* [추가] 숨겨진 input 태그들 */
-        .hidden-input {
+        
+        .card-info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
             display: none;
         }
         
-        /* 변환 버튼 */
-        #convertButton {
-            width: 100%;
-            padding: 15px;
-            margin-top: 25px;
-            font-size: 1.1rem;
-            background-color: #007bff;
-            color: white;
-        }
-        #convertButton:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
+        .card-info.active {
+            display: block;
         }
         
-        /* 로그 */
-        #log {
-            margin-top: 20px;
-            background-color: #f9f9f9;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            padding: 15px;
-            font-family: "Courier New", Courier, monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            min-height: 50px;
-            font-size: 0.9rem;
-            color: #444;
+        .upload-area {
+            padding: 20px 40px;
+            text-align: center;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px 20px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-box.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+        
+        .upload-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 3px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .controls {
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: none;
+        }
+        
+        .controls.active {
+            display: block;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .separator {
+            width: 100%;
+            height: 1px;
+            background: #dee2e6;
+            margin: 8px 0;
+        }
+        
+        .table-container {
+            padding: 40px;
+            display: none;
+        }
+        
+        .table-container.active {
+            display: block;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        
+        table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 4px 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        th.row-number {
+            background: #495057;
+            text-align: center;
+            min-width: 40px;
+        }
+        
+        td.row-number {
+            background: #f8f9fa;
+            font-weight: 600;
+            text-align: center;
+            color: #6c757d;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: #e9ecef;
+        }
+        
+        .column-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .column-header-text {
+            text-align: center;
+        }
+        
+        .column-controls {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+        }
+        
+        .col-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+        
+        .col-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        input[type="text"] {
+            padding: 6px 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            width: 150px;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .stats {
+            padding: 20px 40px;
+            background: #f8f9fa;
+            border-top: 2px solid #e9ecef;
+            display: none;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .stats.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div id="container">
-        <h1>CSV 매핑 툴 📑</h1>
+    <div class="container">
+        <div class="header">
+            <h1>📊 CSV 데이터 편집 도구</h1>
+            <p>CSV 파일을 업로드하여 데이터를 확인하고 열을 자유롭게 편집하세요</p>
+            <div class="card-info" id="cardInfo"></div>
+        </div>
         
-        <div id="dropZone">
-            <p>여기로 파일이나 폴더를 끌어다 놓으세요</p>
-            <div class="button-group">
-                <button type="button" id="fileSelectBtn" class="btn">📄 파일 선택</button>
-                <button type="button" id="folderSelectBtn" class="btn">📁 폴더 선택</button>
+        <div class="upload-area">
+            <div class="upload-box" id="uploadBox">
+                <div class="upload-icon">📁</div>
+                <h3>CSV 파일을 드래그하거나 클릭하여 업로드</h3>
+                <p style="margin-top: 10px; color: #6c757d;">지원 형식: .csv</p>
+                <input type="file" id="fileInput" accept=".csv">
             </div>
         </div>
-
-        <input type="file" id="fileInput" class="hidden-input" accept=".csv" multiple>
-        <input type="file" id="folderInput" class="hidden-input" webkitdirectory directory>
-
-        <button id="convertButton" class="btn" disabled>변환 및 다운로드</button>
-
-        <pre id="log">1. 파일이나 폴더를 선택/드롭하세요.</pre>
+        
+        <div class="controls" id="controls">
+            <div class="control-group">
+                <button class="btn btn-warning" id="undoBtn" disabled>↩️ 실행취소</button>
+                <button class="btn btn-warning" id="redoBtn" disabled>↪️ 다시실행</button>
+            </div>
+            <div class="separator"></div>
+            <div class="control-group">
+                <button class="btn btn-primary" id="creditCardBtn">📄 일반전표전송</button>
+                <button class="btn btn-info" id="generalSlipBtn">💳 신용카드매입자료</button>
+            </div>
+            <div class="separator"></div>
+            <div class="control-group">
+                <input type="text" id="newColumnName" placeholder="새 열 이름">
+                <button class="btn btn-success" id="addColumnBtn">➕열 추가</button>
+            </div>
+            <div class="separator"></div>
+            <div class="control-group">
+                <button class="btn btn-secondary" id="downloadBtn">💾 다운로드</button>
+            </div>
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+            <div class="table-wrapper">
+                <table id="dataTable"></table>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats"></div>
     </div>
 
     <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileSelectBtn = document.getElementById('fileSelectBtn');
-        const folderSelectBtn = document.getElementById('folderSelectBtn');
+        let csvData = [];
+        let headers = [];
+        let detectedCard = '';
+        
+        // 실행취소/다시실행을 위한 히스토리
+        let history = [];
+        let historyIndex = -1;
+        
         const fileInput = document.getElementById('fileInput');
-        const folderInput = document.getElementById('folderInput');
-        const convertButton = document.getElementById('convertButton');
-        const logEl = document.getElementById('log');
-
-        let filesToProcess = []; // [수정] 처리할 파일 목록을 저장할 배열
-
-        // --- 1. 입력 이벤트 핸들러 (버튼, 드래그 앤 드롭) ---
-
-        // '파일 선택' 버튼 클릭
-        fileSelectBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', () => {
-            handleFileSelection(fileInput.files);
+        const uploadBox = document.getElementById('uploadBox');
+        const controls = document.getElementById('controls');
+        const tableContainer = document.getElementById('tableContainer');
+        const stats = document.getElementById('stats');
+        const addColumnBtn = document.getElementById('addColumnBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const cardInfo = document.getElementById('cardInfo');
+        const creditCardBtn = document.getElementById('creditCardBtn');
+        const generalSlipBtn = document.getElementById('generalSlipBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        
+        // 카드사 판별 규칙
+        const cardPatterns = {
+            '삼성카드': ['상품', '매출', '성명', '카드구분', '카드번호', '이용일', '이용금액(원)', '부가세(원)', '가맹점명', '승인번호', '가맹점번호', '사업자번호', '업종'],
+            '신한카드': ['이용일', '최초결제일', '이용카드', '이용가맹점', '이용금액', '상품', '사업자번호'],
+            'KB국민카드': ['순번', '매출일', '카드번호', '취소 구분', '매출 구분', '매출금액', '가맹점명', '사업자번호', '과세유형'],
+            'BNK경남은행': ['순번', '매출일자', '카드번호', '매출종류', '매출금액', '봉사료', '세금', '할부개월', '가맹점명', '승인번호', '사업자번호', '청구일자'],
+            'NH농협카드': ['매출일자', '카드번호', '할부', '매출금액', '세금(부가세)', '봉사료', '사업자번호', '가맹점명', '청구일자'],
+            '현대카드': ['결제일', '이용일', '이용금액', '가맹점', '승인번호'],
+            '롯데카드': ['사용일', '사용시간', '가맹점명', '사용금액', '승인번호'],
+            '하나카드': ['거래일시', '카드명', '가맹점', '이용금액', '승인번호'],
+            '우리카드': ['사용일자', '사용시간', '가맹점명', '승인금액', '승인번호'],
+            'IBK기업은행카드': ['거래일자', '가맹점명', '이용금액', '승인번호'],
+            'BC카드': ['사용일', '가맹점', '금액', '승인번호']
+        };
+        
+        uploadBox.addEventListener('click', function() {
+            fileInput.click();
         });
-
-        // '폴더 선택' 버튼 클릭
-        folderSelectBtn.addEventListener('click', () => folderInput.click());
-        folderInput.addEventListener('change', () => {
-            handleFileSelection(folderInput.files);
-        });
-
-        // 드래그 앤 드롭 이벤트
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false); // 전체 화면 드롭 방지
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-        });
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-        });
-
-        // 드롭 처리
-        dropZone.addEventListener('drop', handleDrop, false);
-
-        function preventDefaults(e) {
+        
+        uploadBox.addEventListener('dragover', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-        }
-
-        async function handleDrop(e) {
-            const items = e.dataTransfer.items;
-            let files = [];
-
-            if (items) {
-                // [신규] 드롭된 항목(파일/폴더)을 비동기적으로 스캔
-                const scanPromises = [];
-                for (let i = 0; i < items.length; i++) {
-                    const entry = items[i].webkitGetAsEntry();
-                    if (entry) {
-                        scanPromises.push(scanFileEntry(entry));
-                    }
-                }
-                const nestedFiles = await Promise.all(scanPromises);
-                files = nestedFiles.flat(Infinity); // 모든 중첩 배열을 1차원으로 펼침
-            } else {
-                // 폴더 스캔을 지원하지 않는 경우 (예: Firefox)
-                files = Array.from(e.dataTransfer.files);
+            uploadBox.classList.add('dragover');
+        });
+        
+        uploadBox.addEventListener('dragleave', function() {
+            uploadBox.classList.remove('dragover');
+        });
+        
+        uploadBox.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                handleFile(file);
+            }
+        });
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+        
+        addColumnBtn.addEventListener('click', addColumn);
+        downloadBtn.addEventListener('click', downloadCSV);
+        creditCardBtn.addEventListener('click', processCreditCard);
+        generalSlipBtn.addEventListener('click', processGeneralSlip);
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        
+        // 히스토리 관리 함수
+        function saveState() {
+            // 현재 상태를 히스토리에 저장
+            const state = {
+                headers: JSON.parse(JSON.stringify(headers)),
+                csvData: JSON.parse(JSON.stringify(csvData)),
+                detectedCard: detectedCard
+            };
+            
+            // 현재 인덱스 이후의 히스토리 삭제 (새로운 작업 시)
+            history = history.slice(0, historyIndex + 1);
+            
+            // 새 상태 추가
+            history.push(state);
+            historyIndex++;
+            
+            // 최대 50개 히스토리 유지
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
             }
             
-            handleFileSelection(files);
+            updateUndoRedoButtons();
         }
         
-        // [신규] 파일/폴더 엔트리 스캔 (재귀)
-        function scanFileEntry(entry) {
-            return new Promise((resolve, reject) => {
-                if (entry.isFile) {
-                    entry.file(file => resolve(file), reject);
-                } else if (entry.isDirectory) {
-                    const reader = entry.createReader();
-                    reader.readEntries(async (entries) => {
-                        const results = await Promise.all(entries.map(scanFileEntry));
-                        resolve(results.flat());
-                    }, reject);
-                } else {
-                    resolve(null); // 알 수 없는 항목
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreState(history[historyIndex]);
+                console.log('실행취소:', historyIndex);
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                restoreState(history[historyIndex]);
+                console.log('다시실행:', historyIndex);
+            }
+        }
+        
+        function restoreState(state) {
+            headers = JSON.parse(JSON.stringify(state.headers));
+            csvData = JSON.parse(JSON.stringify(state.csvData));
+            detectedCard = state.detectedCard;
+            
+            renderTable();
+            updateStats();
+            updateUndoRedoButtons();
+        }
+        
+        function updateUndoRedoButtons() {
+            undoBtn.disabled = historyIndex <= 0;
+            redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+        
+        function handleFile(file) {
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: false,
+                skipEmptyLines: true,
+                transformHeader: header => header.trim().replace(/\s+/g, ' '), // 헤더 공백/공백문자 정리
+                complete: function(results) {
+                    if (results.data.length > 0) {
+                        // 기존 작업 모두 초기화
+                        headers = results.meta.fields;
+                        csvData = results.data;
+                        history = [];
+                        historyIndex = -1;
+                        
+                        // 카드사 판별
+                        detectCardType();
+                        
+                        // 초기 상태 저장
+                        saveState();
+                        
+                        renderTable();
+                        controls.classList.add('active');
+                        tableContainer.classList.add('active');
+                        stats.classList.add('active');
+                        updateStats();
+                        
+                        console.log('새 파일 로드 완료 - 기존 작업 초기화됨');
+                    }
+                },
+                error: function(error) {
+                    alert('CSV 파일 읽기 오류: ' + error.message);
                 }
             });
         }
         
-        // [신규] 파일 목록 처리 (공통 로직)
-        function handleFileSelection(fileList) {
-            // FileList나 배열을 File 객체의 배열로 변환
-            filesToProcess = Array.from(fileList).filter(file => 
-                file && file.name.toLowerCase().endsWith('.csv')
-            );
+        function detectCardType() {
+            let maxMatch = 0;
+            let detectedCardName = '알 수 없는 카드';
             
-            const fileCount = filesToProcess.length;
-            
-            if (fileCount > 0) {
-                log(`[${fileCount}개 CSV 파일]이 선택되었습니다.\n\n- ${filesToProcess.map(f => f.name).slice(0,10).join('\n- ')}\n${fileCount > 10 ? '... 외 다수' : ''}\n\n'변환' 버튼을 누르세요.`);
-                convertButton.disabled = false;
-            } else {
-                log('🔴 선택된 파일/폴더 중에 처리할 `.csv` 파일이 없습니다.');
-                convertButton.disabled = true;
+            // 헤더를 Set으로 만들어 빠르고 정확한 조회를 위함
+            const headerSet = new Set(headers);
+            console.log('Normalized Headers for Detection:', Array.from(headerSet));
+
+            // 각 카드사 패턴과 헤더 비교
+            for (const cardName in cardPatterns) {
+                const pattern = cardPatterns[cardName];
+                let matchCount = 0;
+                
+                // 패턴의 키워드가 헤더 Set에 *정확히* 일치하는지 확인
+                for (const keyword of pattern) {
+                    // if (header.includes(keyword) || keyword.includes(header)) { // 기존의 느슨한 비교
+                    if (headerSet.has(keyword)) { // ★★★ 엄격한(정확한) 비교로 변경
+                        matchCount++;
+                        // break; // Set 조회 시 break 필요 없음 (headerSet.has는 키워드 하나만 찾음)
+                    }
+                }
+                
+                // 가장 많이 일치하는 카드사 찾기
+                if (matchCount > maxMatch) {
+                    maxMatch = matchCount;
+                    detectedCardName = cardName;
+                }
             }
+            
+            // 매치 정도에 따라 판별 (엄격한 기준으로 3개 이상 일치)
+            if (maxMatch >= 3) {
+                detectedCard = detectedCardName;
+                cardInfo.textContent = '🏦 감지된 카드: ' + detectedCardName;
+                cardInfo.classList.add('active');
+            } else {
+                detectedCard = '알 수 없음';
+                cardInfo.textContent = '🏦 감지된 카드: 알 수 없는 형식';
+                cardInfo.classList.add('active');
+            }
+            
+            console.log('Detected card:', detectedCard, 'Match count:', maxMatch);
         }
-
-        // --- 2. 변환 로직 ---
-
-        convertButton.addEventListener('click', runConversion);
-
-        async function runConversion() {
-            if (filesToProcess.length === 0) {
-                log('🔴 오류: 변환할 파일이 없습니다.');
+        
+        function renderTable() {
+            const table = document.getElementById('dataTable');
+            let html = '<thead><tr>';
+            
+            html += '<th class="row-number">#</th>';
+            
+            for (let i = 0; i < headers.length; i++) {
+                const header = headers[i];
+                html += '<th><div class="column-header">';
+                html += '<div class="column-header-text">' + header + '</div>';
+                html += '<div class="column-controls">';
+                
+                if (i > 0) {
+                    html += '<button class="col-btn move-left" data-index="' + i + '">←</button>';
+                }
+                
+                if (i < headers.length - 1) {
+                    html += '<button class="col-btn move-right" data-index="' + i + '">→</button>';
+                }
+                
+                html += '<button class="col-btn delete-col" data-index="' + i + '">🗑️</button>';
+                html += '</div></div></th>';
+            }
+            
+            html += '</tr></thead><tbody>';
+            
+            for (let i = 0; i < csvData.length; i++) {
+                const row = csvData[i];
+                html += '<tr>';
+                html += '<td class="row-number">' + (i + 1) + '</td>';
+                for (let j = 0; j < headers.length; j++) {
+                    const header = headers[j];
+                    const value = row[header] || '';
+                    html += '<td>' + value + '</td>';
+                }
+                html += '</tr>';
+            }
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+            
+            attachTableEvents();
+        }
+        
+        function attachTableEvents() {
+            const deleteButtons = document.querySelectorAll('.delete-col');
+            deleteButtons.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = parseInt(this.getAttribute('data-index'));
+                    console.log('Delete column:', index, headers[index]);
+                    deleteColumn(index);
+                });
+            });
+            
+            const moveLeftButtons = document.querySelectorAll('.move-left');
+            moveLeftButtons.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = parseInt(this.getAttribute('data-index'));
+                    console.log('Move left:', index);
+                    moveColumn(index, -1);
+                });
+            });
+            
+            const moveRightButtons = document.querySelectorAll('.move-right');
+            moveRightButtons.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = parseInt(this.getAttribute('data-index'));
+                    console.log('Move right:', index);
+                    moveColumn(index, 1);
+                });
+            });
+            
+            console.log('Events attached. Delete buttons:', deleteButtons.length);
+        }
+        
+        function addColumn() {
+            const newName = document.getElementById('newColumnName').value.trim();
+            if (!newName) {
+                alert('열 이름을 입력하세요');
                 return;
             }
-
-            log(`🔄 총 ${filesToProcess.length}개 파일 처리 중...`);
-            convertButton.disabled = true;
-
-            try {
-                const zip = new JSZip();
-                let csvFileCount = 0;
-                
-                for (const file of filesToProcess) {
-                    try {
-                        log(`... '${file.name}' 파일 변환 중 ...`);
-                        const text = await readFileAsText(file);
-                        const convertedCsv = processCSV(text);
-                        const newFileName = `표준서식_${file.name}`;
-                        
-                        const bom = '\uFEFF'; // UTF-8 BOM
-                        zip.file(newFileName, bom + convertedCsv);
-                        csvFileCount++;
-                    } catch (fileError) {
-                        log(`🔴 '${file.name}' 처리 중 오류: ${fileError.message}`);
-                    }
-                }
-
-                if (csvFileCount > 0) {
-                    log(`🔄 ${csvFileCount}개 CSV 파일 변환 완료. ZIP 파일 생성 중...`);
-                    const zipBlob = await zip.generateAsync({ type: "blob" });
-                    downloadBlob(zipBlob, '표준서식_일괄변환.zip');
-                    log(`✅ ${csvFileCount}개 파일 일괄 변환 완료! '표준서식_일괄변환.zip' 파일이 다운로드됩니다.`);
-                } else {
-                    log('🔴 변환에 성공한 CSV 파일이 없습니다.');
-                }
-
-            } catch (error) {
-                log(`🔴 전체 변환 중 오류 발생: ${error.message}`);
-                console.error(error);
-            } finally {
-                convertButton.disabled = false;
-                // [수정] 작업 완료 후 파일 목록 초기화
-                filesToProcess = [];
-                // 입력 필드 값 초기화 (다음에 같은 파일/폴더를 또 선택할 수 있도록)
-                fileInput.value = null;
-                folderInput.value = null;
+            if (headers.includes(newName)) {
+                alert('이미 존재하는 열 이름입니다');
+                return;
             }
+            
+            headers.push(newName);
+            for (let i = 0; i < csvData.length; i++) {
+                csvData[i][newName] = '';
+            }
+            
+            saveState();
+            renderTable();
+            updateStats();
+            document.getElementById('newColumnName').value = '';
         }
         
-        function readFileAsText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsText(file, 'UTF-8'); // UTF-8로 읽기
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error(`'${file.name}' 파일 읽기 실패`));
+        function deleteColumn(index) {
+            console.log('deleteColumn called with index:', index);
+            console.log('Current headers:', headers);
+            console.log('Column to delete:', headers[index]);
+            
+            const columnName = headers[index];
+            
+            console.log('Deleting column:', columnName);
+            
+            // 헤더에서 제거
+            headers.splice(index, 1);
+            
+            // 데이터에서 해당 열 제거
+            for (let i = 0; i < csvData.length; i++) {
+                delete csvData[i][columnName];
+            }
+            
+            console.log('New headers:', headers);
+            console.log('Rendering table...');
+            
+            saveState();
+            renderTable();
+            updateStats();
+            
+            console.log('Table rendered');
+        }
+        
+        function moveColumn(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= headers.length) return;
+            
+            const temp = headers[index];
+            headers[index] = headers[newIndex];
+            headers[newIndex] = temp;
+            
+            saveState();
+            renderTable();
+        }
+        
+        function downloadCSV() {
+            const csv = Papa.unparse({
+                fields: headers,
+                data: csvData
             });
-        }
-        
-        /**
-         * [ 중요! 맞춤 설정 영역 ]
-         * 원본 '업종'을 '계정과목'으로 변환하는 규칙입니다.
-         */
-        function getAccountTitle(category) {
-            if (category.includes('마트') || category.includes('잡화점') || category.includes('편의점')) {
-                return '소모품비';
-            }
-            if (category.includes('한식') || category.includes('음료') || category.includes('커피')) {
-                return '복리후생비';
-            }
-            if (category.includes('통신비')) {
-                return '통신비';
-            }
-            return '잡비'; // 기본값
-        }
-
-        // CSV 처리 로직
-        function processCSV(csvText) {
-            const lines = csvText.split(/\r?\n/);
             
-            if (lines.length < 2) throw new Error('데이터가 비어있거나 헤더만 존재합니다.');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            
+            // --- [수정] 파일 이름 생성 로직 (시간 포함) ---
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0'); // 월은 0부터 시작
+            const dd = String(today.getDate()).padStart(2, '0');
+            const HH = String(today.getHours()).padStart(2, '0');
+            const MM = String(today.getMinutes()).padStart(2, '0');
+            const SS = String(today.getSeconds()).padStart(2, '0');
+            const dateString = `${yyyy}-${mm}-${dd}_${HH}${MM}${SS}`; // 예: 2025-10-31_173645
 
-            const rawHeaderLine = lines[0].trim();
-            const rawHeaders = rawHeaderLine.split(',').map(h => h.replace(/"/g, ''));
-
-            const colIndex = {
-                성명: rawHeaders.indexOf('성명'),
-                카드번호: rawHeaders.indexOf('카드번호'),
-                이용일: rawHeaders.indexOf('이용일'),
-                '이용금액(원)': rawHeaders.indexOf('이용금액(원)'),
-                가맹점명: rawHeaders.indexOf('가맹점명'),
-                업종: rawHeaders.indexOf('업종')
-            };
-
-            for (const key in colIndex) {
-                if (colIndex[key] === -1) {
-                    throw new Error(`필수 열을 찾을 수 없습니다: '${key}'`);
+            let cardName = '데이터'; // 기본값
+            
+            if (detectedCard) {
+                if (detectedCard.includes('변환')) {
+                    // "일반전표 (신한카드 변환)" -> "신한카드" 추출
+                    const match = detectedCard.match(/\((.*?)\s*변환\)/);
+                    if (match && match[1]) {
+                        cardName = match[1];
+                    } else {
+                        cardName = '일반전표';
+                    }
+                } else if (detectedCard.includes('양식')) {
+                    // "신용카드매입자료 (양식)" -> "신용카드매입자료" 추출
+                    cardName = detectedCard.split(' ')[0];
+                } else if (detectedCard !== '알 수 없음') {
+                    // "신한카드" -> "신한카드"
+                    cardName = detectedCard;
+                } else {
+                    cardName = '알수없음';
                 }
             }
             
-            const outputHeader = [
-                "년도월일   (숫자8)", "구 분  (숫자1)", "코드", "계정과목", "거래처코드",
-                "\"거 래 처 명\n(30자리)\"", "적요코드", "적  요  명", " 금    액",
-                "\"부서명\n(15자리)\"", "\"사원명\n(15자리)\"", "현장구분", "\"현장\n코드\"",
-                "\"현 장 명\n(25자리)\"", "거래처구분", "\"등록,계좌,카드번호\"",
-                "\"업   태\n(20자리)\"", "\"종    목\n(30자리)\"", "우편번호",
-                "\"주  소\n(80자리)\"", "\"상  세  주  소\n(80자리)\"", "대표자",
-                "매입카드일때카드유형", "신용카드사코드", "\"카드사용\n여부\"",
-                "\"프로젝트\n코드\"", "\" 프로젝트명\n(30자리)\"", "\" 증빙불비 원인\n(30자리)\""
-            ].join(',');
+            // 파일 이름에 부적절한 특수 문자 제거
+            cardName = cardName.replace(/[\/\\?%*:|"<>]/g, ''); 
 
-            const outputRows = [outputHeader];
+            link.download = `${dateString}_${cardName}.csv`; // 최종 파일 이름
+            // --- 파일 이름 생성 종료 ---
 
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line === "") continue;
-
-                const cols = line.split(',');
-                if (cols.length < rawHeaders.length) continue;
-
-                const rawDate = cols[colIndex.이용일];
-                const rawCategory = cols[colIndex.업종];
-                const rawStoreName = cols[colIndex.가맹점명];
-                const rawAmount = cols[colIndex['이용금액(원)']];
-                const rawName = cols[colIndex.성명]; // '성명' 원본 값
-                const rawCardNum = cols[colIndex.카드번호];
-
-                if (!rawDate) continue; // 이용일이 없는 빈 줄 방지
-
-                const newDate = rawDate.replace(/-/g, '');
-                const accountTitle = getAccountTitle(rawCategory);
-                const newCardNum = rawCardNum.replace('**', '-');
+            link.click();
+        }
+        
+        function updateStats() {
+            stats.innerHTML = '<strong>통계:</strong> 총 ' + csvData.length + '개 행 | ' + 
+                            headers.length + '개 열 | 열 이름: ' + headers.join(', ');
+        }
+        
+        function processCreditCard() {
+            // 신용카드매입자료 헤더
+            headers = [
+                '년도월일   (숫자8)',
+                '구 분  (숫자1)',
+                '코드',
+                '계정과목',
+                '거래처코드',
+                '거 래 처 명 (30자리)',
+                '적요코드',
+                '적  요  명',
+                '금    액',
+                '부서명 (15자리)',
+                '사원명 (15자리)',
+                '현장구분',
+                '현장 코드',
+                '현 장 명 (25자리)',
+                '거래처구분',
+                '등록,계좌,카드번호',
+                '업   태 (20자리)',
+                '종   목 (30자리)',
+                '우편번호',
+                '주  소 (80자리)',
+                '상  세  주  소 (80자리)',
+                '대표자',
+                '매입카드일때카드유형',
+                '신용카드사코드',
+                '카드사용 여부',
+                '프로젝트 코드',
+                '프로젝트명 (30자리)',
+                '증빙불비 원인 (30자리)'
+            ];
+            
+            // 빈 데이터로 초기화
+            csvData = [];
+            
+            saveState();
+            renderTable();
+            updateStats();
+            
+            console.log('신용카드매입자료 형식으로 변경 완료');
+        }
+        
+        function processGeneralSlip() {
+            // 일반전표전송 헤더
+            const newHeaders = [
+                '카드종류             (1자리)',
+                '신용카드사명           (30자리이내)',
+                '신용카드번호                   (19자리이내)',
+                '승인일자',
+                '사업자등록번호',
+                '거래처명 (15자리이내)',
+                '거래처유형',
+                '공급가액',
+                '세액',
+                '봉사료',
+                '합계금액',
+                '부가세공제여부',
+                '부가세유형                (2자리)',
+                '계정과목',
+                '품    목(적    요) (30자리이내)',
+                '수 량',
+                '단 가',
+                '대표자                         (15자리이내)',
+                '업 태                       (20자리이내)',
+                '종 목                                   (30자리이내)',
+                '사업장주소                                                                  (80자리이내)',
+                '부서/사원코드               (5자리이내)',
+                '현장코드                        (5자리이내)',
+                '프로젝트코드                   (4자리이내)',
+                '의제.재활용적요번호 (차 변)'
+            ];
+            
+            // 신한카드 데이터 매핑
+            if (detectedCard === '신한카드' && csvData.length > 0) {
+                console.log('신한카드 데이터를 일반전표전송 형식으로 매핑 중...');
                 
-                let newRow = new Array(28).fill('');
-
-                newRow[0] = newDate;
-                newRow[1] = '3';
-                newRow[3] = accountTitle;
-                newRow[5] = rawStoreName;
-                newRow[7] = rawStoreName;
-                newRow[8] = rawAmount;
-                newRow[10] = rawName; // '성명' 원본값 사용
-                newRow[15] = newCardNum;
-                newRow[16] = rawCategory;
-                newRow[17] = rawCategory;
-                newRow[22] = '삼성카드';
-                newRow[23] = '삼성카드';
-                newRow[24] = '1';
-
-                outputRows.push(newRow.join(','));
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="신한카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['이용카드'] || '';
+                    newRow['승인일자'] = row['이용일'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['이용가맹점'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['이용금액'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('신한카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
+            }
+            // 삼성카드 데이터 매핑
+            else if (detectedCard === '삼성카드' && csvData.length > 0) {
+                console.log('삼성카드 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="삼성카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['이용일'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['이용금액(원)'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('삼성카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
+            }
+            // KB국민카드 데이터 매핑
+            else if (detectedCard === 'KB국민카드' && csvData.length > 0) {
+                console.log('KB국민카드 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="KB국민카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['매출일'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['매출금액'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('KB국민카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
+            }
+            // BNK경남은행 데이터 매핑
+            else if (detectedCard === 'BNK경남은행' && csvData.length > 0) {
+                console.log('BNK경남은행 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="BNK경남은행"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['매출일자'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['매출금액'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('BNK경남은행 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
+            }
+            // NH농협카드 데이터 매핑
+            else if (detectedCard === 'NH농협카드' && csvData.length > 0) {
+                console.log('NH농협카드 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="NH농협카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['매출일자'] || '';
+                    newRow['사업자등록번호'] = row['사업자번호'] || '';
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || '';
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['매출금액'] || '';
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('NH농협카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                saveState();
+            }
+            else {
+                // 지원되지 않는 카드사이거나 데이터가 없으면 빈 템플릿
+                headers = newHeaders;
+                csvData = [];
+                console.log('일반전표전송 빈 템플릿으로 변경');
+                saveState();
             }
             
-            if (outputRows.length <= 1) throw new Error('처리할 데이터 행이 없습니다.');
-            
-            return outputRows.join('\n');
+            renderTable();
+            updateStats();
         }
-
-        // Blob 다운로드 헬퍼
-        function downloadBlob(blob, fileName) {
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', fileName);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
     </script>
 </body>
 </html>
+
+
