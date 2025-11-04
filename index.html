@@ -63,6 +63,8 @@
             padding: 20px 40px;
             text-align: center;
             border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            gap: 20px;
         }
         
         .upload-box {
@@ -72,6 +74,17 @@
             background: #f8f9ff;
             cursor: pointer;
             transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .paste-box {
+            border: 3px dashed #28a745;
+            border-radius: 12px;
+            padding: 30px 20px;
+            background: #f0fff4;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
         }
         
         .upload-box:hover {
@@ -79,9 +92,19 @@
             background: #f0f2ff;
         }
         
+        .paste-box:hover {
+            border-color: #1e7e34;
+            background: #e6f9ed;
+        }
+        
         .upload-box.dragover {
             background: #e8ebff;
             border-color: #764ba2;
+        }
+        
+        .paste-box.active {
+            background: #e6f9ed;
+            border-color: #1e7e34;
         }
         
         .upload-icon {
@@ -317,9 +340,14 @@
         <div class="upload-area">
             <div class="upload-box" id="uploadBox">
                 <div class="upload-icon">📁</div>
-                <h3>CSV 파일을 드래그하거나 클릭하여 업로드</h3>
-                <p style="margin-top: 10px; color: #6c757d;">지원 형식: .csv</p>
+                <h3>CSV 파일 업로드</h3>
+                <p style="margin-top: 10px; color: #6c757d;">드래그하거나 클릭하여 업로드</p>
                 <input type="file" id="fileInput" accept=".csv">
+            </div>
+            <div class="paste-box" id="pasteBox">
+                <div class="upload-icon">📋</div>
+                <h3>데이터 붙여넣기</h3>
+                <p style="margin-top: 10px; color: #6c757d;">Excel 데이터를 복사하여 클릭</p>
             </div>
         </div>
         
@@ -365,6 +393,7 @@
         
         const fileInput = document.getElementById('fileInput');
         const uploadBox = document.getElementById('uploadBox');
+        const pasteBox = document.getElementById('pasteBox');
         const controls = document.getElementById('controls');
         const tableContainer = document.getElementById('tableContainer');
         const stats = document.getElementById('stats');
@@ -424,6 +453,11 @@
         downloadBtn.addEventListener('click', downloadCSV);
         creditCardBtn.addEventListener('click', processGeneralSlip);
         generalSlipBtn.addEventListener('click', processCreditCard);
+        
+        // 붙여넣기 박스 클릭 시 모달 생성
+        pasteBox.addEventListener('click', function() {
+            showPasteModal();
+        });
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
         
@@ -747,6 +781,93 @@
         function updateStats() {
             stats.innerHTML = '<strong>통계:</strong> 총 ' + csvData.length + '개 행 | ' + 
                             headers.length + '개 열 | 열 이름: ' + headers.join(', ');
+        }
+        
+        function showPasteModal() {
+            // 모달 생성
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%;';
+            
+            modalContent.innerHTML = `
+                <h2 style="margin-bottom: 20px;">CSV 데이터 붙여넣기</h2>
+                <p style="margin-bottom: 15px; color: #6c757d;">CSV 형식의 데이터를 복사한 후 아래 텍스트 영역에 붙여넣기(Ctrl+V)하세요.</p>
+                <textarea id="pasteArea" style="width: 100%; height: 300px; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 13px;" placeholder="예: 이름,나이,직업\n홍길동,30,개발자\n김철수,25,디자이너"></textarea>
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancelPaste" style="padding: 10px 20px; border: none; background: #6c757d; color: white; border-radius: 6px; cursor: pointer;">취소</button>
+                    <button id="confirmPaste" style="padding: 10px 20px; border: none; background: #28a745; color: white; border-radius: 6px; cursor: pointer;">불러오기</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            const pasteArea = document.getElementById('pasteArea');
+            pasteArea.focus();
+            
+            // 취소 버튼
+            document.getElementById('cancelPaste').addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+            
+            // 불러오기 버튼
+            document.getElementById('confirmPaste').addEventListener('click', function() {
+                const text = pasteArea.value;
+                if (text.trim()) {
+                    processPastedData(text);
+                    document.body.removeChild(modal);
+                } else {
+                    alert('데이터를 붙여넣어주세요.');
+                }
+            });
+            
+            // 모달 배경 클릭 시 닫기
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+        }
+        
+        function processPastedData(text) {
+            // CSV 형식으로 파싱 (쉼표로 구분)
+            Papa.parse(text, {
+                delimiter: ',',
+                header: true,
+                dynamicTyping: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length > 0) {
+                        // 기존 작업 모두 초기화
+                        headers = results.meta.fields;
+                        csvData = results.data;
+                        history = [];
+                        historyIndex = -1;
+                        
+                        // 카드사 판별
+                        detectCardType();
+                        
+                        // 초기 상태 저장
+                        currentFormat = '원본';
+                        saveState();
+                        
+                        renderTable();
+                        controls.classList.add('active');
+                        tableContainer.classList.add('active');
+                        stats.classList.add('active');
+                        updateStats();
+                        
+                        console.log('붙여넣기 데이터 로드 완료:', csvData.length, '행');
+                    } else {
+                        alert('유효한 데이터를 찾을 수 없습니다.');
+                    }
+                },
+                error: function(error) {
+                    alert('데이터 파싱 오류: ' + error.message);
+                }
+            });
         }
         
         function processCreditCard() {
