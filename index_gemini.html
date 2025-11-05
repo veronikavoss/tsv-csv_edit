@@ -63,6 +63,8 @@
             padding: 20px 40px;
             text-align: center;
             border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            gap: 20px;
         }
         
         .upload-box {
@@ -72,6 +74,17 @@
             background: #f8f9ff;
             cursor: pointer;
             transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .paste-box {
+            border: 3px dashed #28a745;
+            border-radius: 12px;
+            padding: 30px 20px;
+            background: #f0fff4;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
         }
         
         .upload-box:hover {
@@ -79,9 +92,19 @@
             background: #f0f2ff;
         }
         
+        .paste-box:hover {
+            border-color: #1e7e34;
+            background: #e6f9ed;
+        }
+        
         .upload-box.dragover {
             background: #e8ebff;
             border-color: #764ba2;
+        }
+        
+        .paste-box.active {
+            background: #e6f9ed;
+            border-color: #1e7e34;
         }
         
         .upload-icon {
@@ -317,9 +340,14 @@
         <div class="upload-area">
             <div class="upload-box" id="uploadBox">
                 <div class="upload-icon">📁</div>
-                <h3>CSV 파일을 드래그하거나 클릭하여 업로드</h3>
-                <p style="margin-top: 10px; color: #6c757d;">지원 형식: .csv</p>
+                <h3>CSV 파일 업로드</h3>
+                <p style="margin-top: 10px; color: #6c757d;">드래그하거나 클릭하여 업로드</p>
                 <input type="file" id="fileInput" accept=".csv">
+            </div>
+            <div class="paste-box" id="pasteBox">
+                <div class="upload-icon">📋</div>
+                <h3>데이터 붙여넣기</h3>
+                <p style="margin-top: 10px; color: #6c757d;">Excel 데이터를 복사하여 클릭</p>
             </div>
         </div>
         
@@ -330,8 +358,8 @@
             </div>
             <div class="separator"></div>
             <div class="control-group">
-                <button class="btn btn-primary" id="creditCardBtn">📄 일반전표전송</button>
-                <button class="btn btn-info" id="generalSlipBtn">💳 신용카드매입자료</button>
+                <button class="btn btn-primary" id="generalSlipBtn">💳 신용카드매입자료</button>
+                <button class="btn btn-info" id="creditCardBtn">📄 일반전표전송</button>
             </div>
             <div class="separator"></div>
             <div class="control-group">
@@ -341,6 +369,7 @@
             <div class="separator"></div>
             <div class="control-group">
                 <button class="btn btn-secondary" id="downloadBtn">💾 다운로드</button>
+                <button class="btn btn-success" id="copyBtn">📋 복사</button>
             </div>
         </div>
         
@@ -357,6 +386,7 @@
         let csvData = [];
         let headers = [];
         let detectedCard = '';
+        let currentFormat = '원본'; // 현재 선택된 형식 추적
         
         // 실행취소/다시실행을 위한 히스토리
         let history = [];
@@ -364,6 +394,7 @@
         
         const fileInput = document.getElementById('fileInput');
         const uploadBox = document.getElementById('uploadBox');
+        const pasteBox = document.getElementById('pasteBox');
         const controls = document.getElementById('controls');
         const tableContainer = document.getElementById('tableContainer');
         const stats = document.getElementById('stats');
@@ -374,17 +405,18 @@
         const generalSlipBtn = document.getElementById('generalSlipBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
+        const copyBtn = document.getElementById('copyBtn');
         
         // 카드사 판별 규칙
         const cardPatterns = {
             '삼성카드': ['상품', '매출', '성명', '카드구분', '카드번호', '이용일', '이용금액(원)', '부가세(원)', '가맹점명', '승인번호', '가맹점번호', '사업자번호', '업종'],
             '신한카드': ['이용일', '최초결제일', '이용카드', '이용가맹점', '이용금액', '상품', '사업자번호'],
             'KB국민카드': ['순번', '매출일', '카드번호', '취소 구분', '매출 구분', '매출금액', '가맹점명', '사업자번호', '과세유형'],
-            'BNK경남은행': ['순번', '매출일자', '카드번호', '매출종류', '매출금액', '봉사료', '세금', '할부개월', '가맹점명', '승인번호', '사업자번호', '청구일자'],
             'NH농협카드': ['매출일자', '카드번호', '할부', '매출금액', '세금(부가세)', '봉사료', '사업자번호', '가맹점명', '청구일자'],
-            '현대카드': ['결제일', '이용일', '이용금액', '가맹점', '승인번호'],
+            'BNK경남은행': ['순번', '매출일자', '카드번호', '매출종류', '매출금액', '봉사료', '세금', '할부개월', '가맹점명', '승인번호', '사업자번호', '청구일자'],
+            '현대카드': ['이용일자', '카드번호', '승인금액', '이용금액', '부가세', '가맹점명', '가맹점번호', '상태', '관계', '할부', '사업자번호'],
             '롯데카드': ['사용일', '사용시간', '가맹점명', '사용금액', '승인번호'],
-            '하나카드': ['거래일시', '카드명', '가맹점', '이용금액', '승인번호'],
+            '하나카드': ['승인일시', '카드번호', '가맹점명', '사업자번호', '가맹점번호', '할부 기간', '승인금액', '취소금액', '취소 여부'],
             '우리카드': ['사용일자', '사용시간', '가맹점명', '승인금액', '승인번호'],
             'IBK기업은행카드': ['거래일자', '가맹점명', '이용금액', '승인번호'],
             'BC카드': ['사용일', '가맹점', '금액', '승인번호']
@@ -421,8 +453,14 @@
         
         addColumnBtn.addEventListener('click', addColumn);
         downloadBtn.addEventListener('click', downloadCSV);
-        creditCardBtn.addEventListener('click', processCreditCard);
+        copyBtn.addEventListener('click', copyToClipboard);
         generalSlipBtn.addEventListener('click', processGeneralSlip);
+        creditCardBtn.addEventListener('click', processCreditCard);
+        
+        // 붙여넣기 박스 클릭 시 모달 생성
+        pasteBox.addEventListener('click', function() {
+            showPasteModal();
+        });
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
         
@@ -487,7 +525,6 @@
                 header: true,
                 dynamicTyping: false,
                 skipEmptyLines: true,
-                transformHeader: header => header.trim().replace(/\s+/g, ' '), // 헤더 공백/공백문자 정리
                 complete: function(results) {
                     if (results.data.length > 0) {
                         // 기존 작업 모두 초기화
@@ -521,32 +558,42 @@
             let maxMatch = 0;
             let detectedCardName = '알 수 없는 카드';
             
-            // 헤더를 Set으로 만들어 빠르고 정확한 조회를 위함
-            const headerSet = new Set(headers);
-            console.log('Normalized Headers for Detection:', Array.from(headerSet));
-
             // 각 카드사 패턴과 헤더 비교
             for (const cardName in cardPatterns) {
                 const pattern = cardPatterns[cardName];
                 let matchCount = 0;
+                let exactMatchCount = 0;
                 
-                // 패턴의 키워드가 헤더 Set에 *정확히* 일치하는지 확인
+                // 패턴의 키워드가 헤더에 포함되어 있는지 확인
                 for (const keyword of pattern) {
-                    // if (header.includes(keyword) || keyword.includes(header)) { // 기존의 느슨한 비교
-                    if (headerSet.has(keyword)) { // ★★★ 엄격한(정확한) 비교로 변경
-                        matchCount++;
-                        // break; // Set 조회 시 break 필요 없음 (headerSet.has는 키워드 하나만 찾음)
+                    for (const header of headers) {
+                        // 정확히 일치하는 경우
+                        if (header === keyword) {
+                            matchCount++;
+                            exactMatchCount++;
+                            break;
+                        }
+                        // 부분 일치하는 경우
+                        else if (header.includes(keyword) || keyword.includes(header)) {
+                            matchCount++;
+                            break;
+                        }
                     }
                 }
                 
-                // 가장 많이 일치하는 카드사 찾기
-                if (matchCount > maxMatch) {
-                    maxMatch = matchCount;
+                // 가중치: 정확한 일치에 더 높은 점수
+                const score = matchCount + (exactMatchCount * 0.5);
+                
+                console.log(cardName, '- 매치:', matchCount, '정확:', exactMatchCount, '점수:', score);
+                
+                // 가장 높은 점수의 카드사 찾기
+                if (score > maxMatch) {
+                    maxMatch = score;
                     detectedCardName = cardName;
                 }
             }
             
-            // 매치 정도에 따라 판별 (엄격한 기준으로 3개 이상 일치)
+            // 매치 정도에 따라 판별
             if (maxMatch >= 3) {
                 detectedCard = detectedCardName;
                 cardInfo.textContent = '🏦 감지된 카드: ' + detectedCardName;
@@ -557,7 +604,7 @@
                 cardInfo.classList.add('active');
             }
             
-            console.log('Detected card:', detectedCard, 'Match count:', maxMatch);
+            console.log('Detected card:', detectedCard, 'Score:', maxMatch);
         }
         
         function renderTable() {
@@ -703,6 +750,23 @@
         }
         
         function downloadCSV() {
+            // 현재 날짜와 시간 생성 (YYYYMMDD_HHMMSS 형식)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const dateTime = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+            
+            // 카드사 이름 (없으면 '미분류')
+            const cardName = detectedCard || '미분류';
+            
+            // 파일 이름 생성: 날짜시간_카드사이름_형식.csv
+            const fileName = `${dateTime}_${cardName}_${currentFormat}.csv`;
+            
             const csv = Papa.unparse({
                 fields: headers,
                 data: csvData
@@ -711,51 +775,153 @@
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            
-            // --- [수정] 파일 이름 생성 로직 (시간 포함) ---
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0'); // 월은 0부터 시작
-            const dd = String(today.getDate()).padStart(2, '0');
-            const HH = String(today.getHours()).padStart(2, '0');
-            const MM = String(today.getMinutes()).padStart(2, '0');
-            const SS = String(today.getSeconds()).padStart(2, '0');
-            const dateString = `${yyyy}-${mm}-${dd}_${HH}${MM}${SS}`; // 예: 2025-10-31_173645
-
-            let cardName = '데이터'; // 기본값
-            
-            if (detectedCard) {
-                if (detectedCard.includes('변환')) {
-                    // "일반전표 (신한카드 변환)" -> "신한카드" 추출
-                    const match = detectedCard.match(/\((.*?)\s*변환\)/);
-                    if (match && match[1]) {
-                        cardName = match[1];
-                    } else {
-                        cardName = '일반전표';
-                    }
-                } else if (detectedCard.includes('양식')) {
-                    // "신용카드매입자료 (양식)" -> "신용카드매입자료" 추출
-                    cardName = detectedCard.split(' ')[0];
-                } else if (detectedCard !== '알 수 없음') {
-                    // "신한카드" -> "신한카드"
-                    cardName = detectedCard;
-                } else {
-                    cardName = '알수없음';
-                }
-            }
-            
-            // 파일 이름에 부적절한 특수 문자 제거
-            cardName = cardName.replace(/[\/\\?%*:|"<>]/g, ''); 
-
-            link.download = `${dateString}_${cardName}.csv`; // 최종 파일 이름
-            // --- 파일 이름 생성 종료 ---
-
+            link.download = fileName;
             link.click();
+            
+            console.log('다운로드 파일명:', fileName);
+        }
+        
+        function copyToClipboard() {
+            // CSV 형식으로 변환
+            const csv = Papa.unparse({
+                fields: headers,
+                data: csvData
+            });
+            
+            // 클립보드에 복사 (Fallback: document.execCommand('copy') 사용)
+            // navigator.clipboard.writeText(csv).then(function() { ... })
+            // 위 코드는 iFrame 환경 등에서 권한 정책 오류를 발생시킬 수 있습니다.
+            
+            let success = false;
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = csv;
+                
+                // 화면 밖으로 숨김
+                textArea.style.position = 'fixed';
+                textArea.style.top = '-9999px';
+                textArea.style.left = '-9999px';
+                
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                success = document.execCommand('copy');
+                
+                document.body.removeChild(textArea);
+
+                if (success) {
+                    // 성공 메시지
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✅ 복사완료!';
+                    copyBtn.style.background = '#28a745';
+                    
+                    setTimeout(function() {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '';
+                    }, 2000);
+                    
+                    console.log('CSV 데이터가 클립보드에 복사되었습니다.');
+                } else {
+                    throw new Error('document.execCommand(copy) 실패');
+                }
+
+            } catch (err) {
+                alert('복사 실패: ' + err.message);
+                console.error('복사 오류:', err);
+            }
         }
         
         function updateStats() {
             stats.innerHTML = '<strong>통계:</strong> 총 ' + csvData.length + '개 행 | ' + 
                             headers.length + '개 열 | 열 이름: ' + headers.join(', ');
+        }
+        
+        function showPasteModal() {
+            // 모달 생성
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%;';
+            
+            modalContent.innerHTML = `
+                <h2 style="margin-bottom: 20px;">CSV 데이터 붙여넣기</h2>
+                <p style="margin-bottom: 15px; color: #6c757d;">CSV 형식의 데이터를 복사한 후 아래 텍스트 영역에 붙여넣기(Ctrl+V)하세요.</p>
+                <textarea id="pasteArea" style="width: 100%; height: 300px; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 13px;" placeholder="예: 이름,나이,직업\n홍길동,30,개발자\n김철수,25,디자이너"></textarea>
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancelPaste" style="padding: 10px 20px; border: none; background: #6c757d; color: white; border-radius: 6px; cursor: pointer;">취소</button>
+                    <button id="confirmPaste" style="padding: 10px 20px; border: none; background: #28a745; color: white; border-radius: 6px; cursor: pointer;">불러오기</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            const pasteArea = document.getElementById('pasteArea');
+            pasteArea.focus();
+            
+            // 취소 버튼
+            document.getElementById('cancelPaste').addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+            
+            // 불러오기 버튼
+            document.getElementById('confirmPaste').addEventListener('click', function() {
+                const text = pasteArea.value;
+                if (text.trim()) {
+                    processPastedData(text);
+                    document.body.removeChild(modal);
+                } else {
+                    alert('데이터를 붙여넣어주세요.');
+                }
+            });
+            
+            // 모달 배경 클릭 시 닫기
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+        }
+        
+        function processPastedData(text) {
+            // CSV 형식으로 파싱 (쉼표로 구분)
+            Papa.parse(text, {
+                delimiter: ',',
+                header: true,
+                dynamicTyping: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length > 0) {
+                        // 기존 작업 모두 초기화
+                        headers = results.meta.fields;
+                        csvData = results.data;
+                        history = [];
+                        historyIndex = -1;
+                        
+                        // 카드사 판별
+                        detectCardType();
+                        
+                        // 초기 상태 저장
+                        currentFormat = '원본';
+                        saveState();
+                        
+                        renderTable();
+                        controls.classList.add('active');
+                        tableContainer.classList.add('active');
+                        stats.classList.add('active');
+                        updateStats();
+                        
+                        console.log('붙여넣기 데이터 로드 완료:', csvData.length, '행');
+                    } else {
+                        alert('유효한 데이터를 찾을 수 없습니다.');
+                    }
+                },
+                error: function(error) {
+                    alert('데이터 파싱 오류: ' + error.message);
+                }
+            });
         }
         
         function processCreditCard() {
@@ -793,6 +959,8 @@
             
             // 빈 데이터로 초기화
             csvData = [];
+            
+            currentFormat = '신용카드매입자료'; // 형식 변경 추적
             
             saveState();
             renderTable();
@@ -874,6 +1042,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('신한카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // 삼성카드 데이터 매핑
@@ -919,6 +1088,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('삼성카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // KB국민카드 데이터 매핑
@@ -964,6 +1134,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('KB국민카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // BNK경남은행 데이터 매핑
@@ -1009,6 +1180,7 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('BNK경남은행 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             // NH농협카드 데이터 매핑
@@ -1054,6 +1226,99 @@
                 headers = newHeaders;
                 csvData = newData;
                 console.log('NH농협카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
+                saveState();
+            }
+            // [신규] 하나카드 데이터 매핑
+            else if (detectedCard === '하나카드' && csvData.length > 0) {
+                console.log('하나카드 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="하나카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['승인일시'] || ''; // 매핑
+                    newRow['사업자등록번호'] = row['사업자번호'] || ''; // 매핑
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || ''; // 매핑
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['승인금액'] || ''; // 매핑
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('하나카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
+                saveState();
+            }
+            // [신규] 현대카드 데이터 매핑
+            else if (detectedCard === '현대카드' && csvData.length > 0) {
+                console.log('현대카드 데이터를 일반전표전송 형식으로 매핑 중...');
+                
+                const newData = [];
+                
+                for (let i = 0; i < csvData.length; i++) {
+                    const row = csvData[i];
+                    const rowNum = i + 2;
+                    const newRow = {};
+                    
+                    newRow['카드종류             (1자리)'] = '1';
+                    newRow['신용카드사명           (30자리이내)'] = '="현대카드"';
+                    newRow['신용카드번호                   (19자리이내)'] = row['카드번호'] || '';
+                    newRow['승인일자'] = row['이용일자'] || ''; // 매핑
+                    newRow['사업자등록번호'] = row['사업자번호'] || ''; // 매핑
+                    newRow['거래처명 (15자리이내)'] = row['가맹점명'] || ''; // 매핑
+                    newRow['거래처유형'] = '';
+                    newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
+                    newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
+                    newRow['봉사료'] = '0';
+                    newRow['합계금액'] = row['승인금액'] || row['이용금액'] || ''; // 매핑 (승인금액 우선)
+                    newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
+                    newRow['부가세유형                (2자리)'] = '57';
+                    newRow['계정과목'] = '';
+                    newRow['품    목(적    요) (30자리이내)'] = '';
+                    newRow['수 량'] = '';
+                    newRow['단 가'] = '';
+                    newRow['대표자                         (15자리이내)'] = '';
+                    newRow['업 태                       (20자리이내)'] = '';
+                    newRow['종 목                                   (30자리이내)'] = '';
+                    newRow['사업장주소                                                                  (80자리이내)'] = '';
+                    newRow['부서/사원코드               (5자리이내)'] = '';
+                    newRow['현장코드                        (5자리이내)'] = '';
+                    newRow['프로젝트코드                   (4자리이내)'] = '';
+                    newRow['의제.재활용적요번호 (차 변)'] = '';
+                    
+                    newData.push(newRow);
+                }
+                
+                headers = newHeaders;
+                csvData = newData;
+                console.log('현대카드 데이터 매핑 완료 (함수 포함):', csvData.length, '행');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             else {
@@ -1061,6 +1326,7 @@
                 headers = newHeaders;
                 csvData = [];
                 console.log('일반전표전송 빈 템플릿으로 변경');
+                currentFormat = '일반전표전송'; // 형식 변경 추적
                 saveState();
             }
             
@@ -1070,5 +1336,3 @@
     </script>
 </body>
 </html>
-
-
