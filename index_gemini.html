@@ -45,20 +45,6 @@
             font-size: 14px;
         }
         
-        .card-info {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
-        }
-        
-        .card-info.active {
-            display: block;
-        }
-        
         .upload-area {
             padding: 20px 40px;
             text-align: center;
@@ -239,16 +225,15 @@
             font-size: 12px;
         }
         
-        /* [수정] 셀 편집 기능 (v2) */
+        /* 셀 편집 스타일 */
         td[contenteditable="true"] {
-            background-color: #fef
-            fe; /* 편집 가능한 셀 배경색 */
+            background-color: #fefefe;
             outline: none;
         }
         
         td[contenteditable="true"]:focus {
             background-color: #fff;
-            box-shadow: 0 0 0 2px #667eea inset; /* 포커스 시 테두리 */
+            box-shadow: 0 0 0 2px #667eea inset;
         }
         
         th {
@@ -345,8 +330,7 @@
     <div class="container">
         <div class="header">
             <h1>📊 CSV 데이터 편집 도구</h1>
-            <p>CSV 파일을 업로드하여 데이터를 확인하고 열을 자유롭게 편집하세요</p>
-            <div class="card-info" id="cardInfo"></div>
+            <p>CSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
         </div>
         
         <div class="upload-area">
@@ -370,9 +354,7 @@
             </div>
             <div class="separator"></div>
             <div class="control-group">
-                <!-- [수정] v2: 버튼 텍스트 수정 -->
-                <!-- [수정] v3: 기능 복구 -->
-                <button class="btn btn-primary" id="creditCardBtn">📄 일반전표전송 양식</button>
+                <button class="btn btn-primary" id="creditCardBtn">💳 신용카드매입자료 양식</button>
             </div>
             <div class="separator"></div>
             <div class="control-group">
@@ -398,8 +380,7 @@
     <script>
         let csvData = [];
         let headers = [];
-        let detectedCard = '';
-        let currentFormat = '원본'; // 현재 선택된 형식 추적
+        let currentFormat = '원본'; 
         
         // 실행취소/다시실행을 위한 히스토리
         let history = [];
@@ -413,33 +394,40 @@
         const stats = document.getElementById('stats');
         const addColumnBtn = document.getElementById('addColumnBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        const cardInfo = document.getElementById('cardInfo');
-        const creditCardBtn = document.getElementById('creditCardBtn'); // v3: 일반전표
-        // const generalSlipBtn = document.getElementById('generalSlipBtn'); // v3: 신용카드 (v4: 삭제됨)
+        const creditCardBtn = document.getElementById('creditCardBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
         const copyBtn = document.getElementById('copyBtn');
         
-        // [수정] 카드사 판별 규칙 (v4 - 16개 규칙, 모든 공백 제거)
-        // '헤더값.csv' 파일의 헤더를 기반으로, 모든 공백(띄어쓰기, 특수공백)을 제거한 버전
-        const cardPatterns = {
-            'BNK 경남은행': ['순번','매출일자','카드번호','매출종류','매출금액','봉사료','세금','할부개월','가맹점명','승인번호','사업자번호','청구일자'],
-            'KB 국민카드': ['순번','매출일','카드번호','취소구분','매출구분','매출금액','가맹점명','사업자번호','과세유형'], // '취소 구분' -> '취소구분', '매출 구분' -> '매출구분'
-            'KB 국민카드 (v2)': ['순번','카드번호','청구일','매출일','승인시간','취소여부','할부기간','청구회차','매출금액','할인금액','승인번호','가맹점명','가맹점사업자번호'],
-            'KB 국민카드 (v3)': ['이용일','카드번호','취소여부','결제방법','이용금액','이용하신곳','사업자번호','과세유형'],
-            'NH 농협카드': ['매출일자','카드번호','할부','매출금액','세금(부가세)','봉사료','사업자번호','가맹점명','청구일자'],
-            '롯데카드': ['카드번호','매출일자','사업자번호','가맹점번호','가맹점명','하위물명','할부','승인번호','매출금액','부가세'],
-            '롯데카드 (v2)': ['접수일자','카드번호','매출일자','승인번호','가맹점명','매출금액','부가세','할부','가맹점번호','사업자번호'], // '접수 일자' -> '접수일자', '승인 번호' -> '승인번호' 등
-            '삼성카드': ['상품','매출','성명','카드구분','카드번호','이용일','이용금액(원)','부가세(원)','가맹점명','승인번호','가맹점번호','사업자번호','업종'],
-            '신한카드': ['이용일','최초결제일','이용카드','이용가맹점','이용금액','상품','사업자번호'], // '이용 카드' -> '이용카드'
-            '신한카드 (v2)': ['거래일','확정일','카드번호','상품구분','가맹점명','사업자번호','과세유형','매출금액','공급가액','부가세','비과세'], // '상품 구분' -> '상품구분'
-            '우리카드': ['순번','매출일자','이용카드','매출금액(원)','부가세(원)','봉사료(원)','자원순환보증금(원)','매출종류','할부개월','가맹점명','사업자번호','청구일자'], // '이용 카드' -> '이용카드', '할부 개월' -> '할부개월'
-            '현대카드': ['이용일자','카드번호','승인금액','이용금액','부가세','가맹점명','가맹점번호','상태','관계','할부','사업자번호'],
-            '현대카드 (v2)': ['이용일','확정일','카드구분','카드명(카드번호뒤4자리)','가맹점명','사업자번호','승인번호','할부개월','이용금액'], // '카드명(카드번호 뒤 4자리)' -> '카드명(카드번호뒤4자리)', '할부 개월' -> '할부개월'
-            '하나카드': ['승인일시','카드번호','가맹점명','사업자번호','가맹점번호','할부기간','승인금액','취소금액','취소여부'], // '할부 기간' -> '할부기간', '취소 여부' -> '취소여부'
-            '하나카드 (v2)': ['승인일자','카드번호','가맹점명','사업자번호','가맹점번호','할부기간','승인금액','취소여부','취소금액'], // '할부 기간' -> '할부기간', '취소 여부' -> '취소여부'
-            '기업비씨카드': ['일련번호','거래일자','공급가액','세액','건수','상호','사업자등록번호','성명(법인명)','카드회원번호'],
-        };
+        // [통합 매핑 규칙] 매핑데이터.csv 파일 기준
+        const mappingRules = [
+            { id: 'col1', label: '카드종류(1자리)', type: 'fixed', value: '1' },
+            // 신용카드사명: 마지막 행에서 감지되면 그 값을 사용, 없으면 빈 값
+            { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name' }, 
+            { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호','이용카드','이용 카드','카드명(카드번호뒤4자리)','카드명(카드번호 뒤 4자리)','카드회원번호'] },
+            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자','매출일','이용일자','이용일','거래일자','거래일','승인일시','승인일자'] },
+            { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호','사업자번호','가맹점사업자번호'] },
+            { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명','이용하신곳','이용가맹점','상호'] },
+            { id: 'col7', label: '거래처유형', type: 'empty' },
+            { id: 'col8', label: '공급가액', type: 'formula', formula: (r) => `=IF(L${r}="공제", ROUND(K${r}/1.1, 0), "")` },
+            { id: 'col9', label: '세액', type: 'formula', formula: (r) => `=IF(L${r}="공제", K${r}-H${r}, "")` },
+            { id: 'col10', label: '봉사료', type: 'fixed', value: '0' },
+            { id: 'col11', label: '합계금액', type: 'header', candidates: ['공급가액','승인금액','이용금액(원)','이용금액','매출금액(원)','매출금액'] }, 
+            { id: 'col12', label: '부가세공제여부', type: 'formula', formula: (r) => `=IF(M${r}=57, "공제", "불공제")` },
+            { id: 'col13', label: '부가세유형(2자리)', type: 'fixed', value: '57' },
+            { id: 'col14', label: '계정과목', type: 'empty' },
+            { id: 'col15', label: '품목(적요)(30자리이내)', type: 'empty' },
+            { id: 'col16', label: '수량', type: 'empty' },
+            { id: 'col17', label: '단가', type: 'empty' },
+            { id: 'col18', label: '대표자(15자리이내)', type: 'empty' },
+            { id: 'col19', label: '업태(20자리이내)', type: 'empty' },
+            { id: 'col20', label: '종목(30자리이내)', type: 'empty' },
+            { id: 'col21', label: '사업장주소(80자리이내)', type: 'empty' },
+            { id: 'col22', label: '부서/사원코드(5자리이내)', type: 'empty' },
+            { id: 'col23', label: '현장코드(5자리이내)', type: 'empty' },
+            { id: 'col24', label: '프로젝트코드(4자리이내)', type: 'empty' },
+            { id: 'col25', label: '의제.재활용적요번호(차변)', type: 'empty' }
+        ];
         
         uploadBox.addEventListener('click', function() {
             fileInput.click();
@@ -474,35 +462,25 @@
         downloadBtn.addEventListener('click', downloadCSV);
         copyBtn.addEventListener('click', copyToClipboard);
         
-        // [수정] v2: 버튼 ID와 기능 연결 (v3: 기능 복구)
-        creditCardBtn.addEventListener('click', processGeneralSlip);  // '일반전표전송' 버튼
-        // generalSlipBtn.addEventListener('click', processCreditCard); // '신용카드매입자료' 버튼 (v4: 삭제)
+        creditCardBtn.addEventListener('click', processCreditCardPurchaseData);
         
-        // 붙여넣기 박스 클릭 시 모달 생성
         pasteBox.addEventListener('click', function() {
             showPasteModal();
         });
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
-        
-        // 히스토리 관리 함수
+
         function saveState() {
-            // 현재 상태를 히스토리에 저장
             const state = {
                 headers: JSON.parse(JSON.stringify(headers)),
                 csvData: JSON.parse(JSON.stringify(csvData)),
-                detectedCard: detectedCard,
-                currentFormat: currentFormat // [추가] 현재 형식도 저장
+                currentFormat: currentFormat
             };
             
-            // 현재 인덱스 이후의 히스토리 삭제 (새로운 작업 시)
             history = history.slice(0, historyIndex + 1);
-            
-            // 새 상태 추가
             history.push(state);
             historyIndex++;
             
-            // 최대 50개 히스토리 유지
             if (history.length > 50) {
                 history.shift();
                 historyIndex--;
@@ -515,7 +493,6 @@
             if (historyIndex > 0) {
                 historyIndex--;
                 restoreState(history[historyIndex]);
-                console.log('실행취소:', historyIndex);
             }
         }
         
@@ -523,27 +500,14 @@
             if (historyIndex < history.length - 1) {
                 historyIndex++;
                 restoreState(history[historyIndex]);
-                console.log('다시실행:', historyIndex);
             }
         }
         
         function restoreState(state) {
             headers = JSON.parse(JSON.stringify(state.headers));
             csvData = JSON.parse(JSON.stringify(state.csvData));
-            detectedCard = state.detectedCard;
-            currentFormat = state.currentFormat; // [추가] 형식 복원
+            currentFormat = state.currentFormat;
             
-            // [추가] 카드 정보 UI 복원
-            if (detectedCard && detectedCard !== '알 수 없음') {
-                 cardInfo.textContent = '🏦 감지된 카드: ' + detectedCard;
-                 cardInfo.classList.add('active');
-            } else if (detectedCard === '알 수 없음') {
-                 cardInfo.textContent = '🏦 감지된 카드: 알 수 없는 형식';
-                 cardInfo.classList.add('active');
-            } else {
-                 cardInfo.classList.remove('active');
-            }
-
             renderTable();
             updateStats();
             updateUndoRedoButtons();
@@ -554,126 +518,84 @@
             redoBtn.disabled = historyIndex >= history.length - 1;
         }
         
+        // [공통] 데이터 로드 함수
+        function processLoadedData(results, sourceName) {
+            if (results.data.length > 0) {
+                headers = results.meta.fields;
+                csvData = results.data;
+                history = [];
+                historyIndex = -1;
+                currentFormat = '원본';
+                
+                saveState();
+                renderTable();
+                controls.classList.add('active');
+                tableContainer.classList.add('active');
+                stats.classList.add('active');
+                updateStats();
+                
+                console.log(`${sourceName} 로드 완료 (헤더 공백 제거됨)`);
+            } else {
+                showErrorModal('데이터 오류', '유효한 데이터가 없습니다.');
+            }
+        }
+
         function handleFile(file) {
             Papa.parse(file, {
                 header: true,
                 dynamicTyping: false,
                 skipEmptyLines: true,
-                // [수정] 헤더 정제 로직 (v4 - 모든 공백 제거): 안정적인 감지를 위해 모든 공백류 문자를 제거
                 transformHeader: function(header) {
                     if (typeof header === 'string') {
-                        // \uFEFF: BOM
-                        // \s: 표준 공백 (스페이스, 탭, 개행 등)
-                        // \u00A0: non-breaking space
-                        // \u200B: zero-width space
-                        // 1. 모든 공백류 문자를 제거
                         return header.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
                     }
                     return header;
                 },
                 complete: function(results) {
-                    if (results.data.length > 0) {
-                        // 기존 작업 모두 초기화
-                        headers = results.meta.fields;
-                        csvData = results.data;
-                        history = [];
-                        historyIndex = -1;
-                        currentFormat = '원본'; // [추가] 형식 초기화
-                        
-                        // 카드사 판별
-                        detectCardType();
-                        
-                        // 초기 상태 저장
-                        saveState();
-                        
-                        renderTable();
-                        controls.classList.add('active');
-                        tableContainer.classList.add('active');
-                        stats.classList.add('active');
-                        updateStats();
-                        
-                        console.log('새 파일 로드 완료 - 기존 작업 초기화됨');
-                    }
+                    processLoadedData(results, '파일');
                 },
                 error: function(error) {
-                    // [수정] 커스텀 모달로 오류 표시
-                    showErrorModal('CSV 파일 읽기 오류', '파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+                    showErrorModal('CSV 파일 읽기 오류', error.message);
                 }
             });
         }
-        
-        function detectCardType() {
-            let detectedCardName = '알 수 없음'; // 기본값
-            
-            // [수정] v4: 헤더의 수, 순서, 값이 모두 일치하는 '엄격한' 검사
-            for (const cardName in cardPatterns) {
-                const pattern = cardPatterns[cardName];
-                
-                // 1. 헤더 개수 검사
-                if (headers.length !== pattern.length) {
-                    continue; // 개수가 다르면 다음 패턴으로
-                }
-                
-                // 2. 헤더 순서 및 값 검사
-                let isMatch = true;
-                for (let i = 0; i < headers.length; i++) {
-                    // [수정] v4 - file header(headers[i])는 이미 모든 공백이 제거됨
-                    // cardPatterns 객체의 헤더(pattern[i])도 이미 공백이 제거된 상태이므로
-                    // 1:1 비교만 수행
-                    if (headers[i] !== pattern[i]) { 
-                        isMatch = false;
-                        console.log(`Mismatch detected: File='${headers[i]}', Pattern='${pattern[i]}'`); // 디버깅 로그
-                        break; 
+
+        function processPastedData(text) {
+            Papa.parse(text, {
+                delimiter: ',',
+                header: true,
+                dynamicTyping: false,
+                skipEmptyLines: true,
+                transformHeader: function(header) {
+                    if (typeof header === 'string') {
+                        return header.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
                     }
+                    return header;
+                },
+                complete: function(results) {
+                    processLoadedData(results, '붙여넣기');
+                },
+                error: function(error) {
+                    showErrorModal('데이터 파싱 오류', error.message);
                 }
-                
-                // 3. 완전 일치 시
-                if (isMatch) {
-                    detectedCardName = cardName;
-                    break; // 찾았으므로 외부 루프 종료
-                }
-            }
-            
-            // [수정] 감지 결과 UI 업데이트
-            detectedCard = detectedCardName; // 전역 변수 업데이트
-            
-            if (detectedCardName !== '알 수 없음') {
-                cardInfo.textContent = '🏦 감지된 카드: ' + detectedCardName;
-                cardInfo.classList.add('active');
-            } else {
-                cardInfo.textContent = '🏦 감지된 카드: 알 수 없는 형식';
-                cardInfo.classList.add('active');
-            }
-            
-            console.log('Detected card (Strict, Spaceless):', detectedCard);
+            });
         }
         
         function renderTable() {
             const table = document.getElementById('dataTable');
             let html = '<thead><tr>';
-            
             html += '<th class="row-number">#</th>';
-            
             for (let i = 0; i < headers.length; i++) {
                 const header = headers[i];
                 html += '<th><div class="column-header">';
                 html += '<div class="column-header-text">' + header + '</div>';
                 html += '<div class="column-controls">';
-                
-                if (i > 0) {
-                    html += '<button class="col-btn move-left" data-index="' + i + '" title="왼쪽으로 이동">←</button>';
-                }
-                
-                if (i < headers.length - 1) {
-                    html += '<button class="col-btn move-right" data-index="' + i + '" title="오른쪽으로 이동">→</button>';
-                }
-                
-                html += '<button class="col-btn delete-col" data-index="' + i + '" title="열 삭제">🗑️</button>';
+                if (i > 0) html += '<button class="col-btn move-left" data-index="' + i + '">←</button>';
+                if (i < headers.length - 1) html += '<button class="col-btn move-right" data-index="' + i + '">→</button>';
+                html += '<button class="col-btn delete-col" data-index="' + i + '">🗑️</button>';
                 html += '</div></div></th>';
             }
-            
             html += '</tr></thead><tbody>';
-            
             for (let i = 0; i < csvData.length; i++) {
                 const row = csvData[i];
                 html += '<tr>';
@@ -681,82 +603,49 @@
                 for (let j = 0; j < headers.length; j++) {
                     const header = headers[j];
                     const value = row[header] || '';
-                    // [수정] v2: 셀 편집 기능 추가
                     html += `<td contenteditable="true" onblur="handleCellEdit(this, ${i}, '${header}')">${value}</td>`;
                 }
                 html += '</tr>';
             }
-            
             html += '</tbody>';
             table.innerHTML = html;
-            
             attachTableEvents();
         }
 
-        // [신규] v2: 셀 편집 핸들러
         function handleCellEdit(element, rowIndex, headerName) {
             const newValue = element.textContent;
-            
             if (csvData[rowIndex][headerName] !== newValue) {
-                console.log(`Data changed: [${rowIndex}]["${headerName}"] = "${newValue}"`);
                 csvData[rowIndex][headerName] = newValue;
-                saveState(); // 변경 사항을 히스토리에 저장
+                saveState();
             }
         }
         
         function attachTableEvents() {
-            const deleteButtons = document.querySelectorAll('.delete-col');
-            deleteButtons.forEach(function(btn) {
+            document.querySelectorAll('.delete-col').forEach(btn => {
                 btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const index = parseInt(this.getAttribute('data-index'));
-                    console.log('Delete column:', index, headers[index]);
-                    deleteColumn(index);
+                    deleteColumn(parseInt(this.getAttribute('data-index')));
                 });
             });
-            
-            const moveLeftButtons = document.querySelectorAll('.move-left');
-            moveLeftButtons.forEach(function(btn) {
+            document.querySelectorAll('.move-left').forEach(btn => {
                 btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const index = parseInt(this.getAttribute('data-index'));
-                    console.log('Move left:', index);
-                    moveColumn(index, -1);
+                    moveColumn(parseInt(this.getAttribute('data-index')), -1);
                 });
             });
-            
-            const moveRightButtons = document.querySelectorAll('.move-right');
-            moveRightButtons.forEach(function(btn) {
+            document.querySelectorAll('.move-right').forEach(btn => {
                 btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const index = parseInt(this.getAttribute('data-index'));
-                    console.log('Move right:', index);
-                    moveColumn(index, 1);
+                    moveColumn(parseInt(this.getAttribute('data-index')), 1);
                 });
             });
-            
-            console.log('Events attached. Delete buttons:', deleteButtons.length);
         }
         
         function addColumn() {
             const newName = document.getElementById('newColumnName').value.trim();
-            if (!newName) {
-                showErrorModal('입력 오류', '새로 추가할 열의 이름을 입력하세요.');
-                return;
-            }
-            if (headers.includes(newName)) {
-                showErrorModal('입력 오류', '이미 존재하는 열 이름입니다. 다른 이름을 사용하세요.');
-                return;
-            }
-            
+            if (!newName) return showErrorModal('오류', '열 이름을 입력하세요.');
+            if (headers.includes(newName)) return showErrorModal('오류', '이미 존재하는 열 이름입니다.');
             headers.push(newName);
             for (let i = 0; i < csvData.length; i++) {
                 csvData[i][newName] = '';
             }
-            
             saveState();
             renderTable();
             updateStats();
@@ -764,462 +653,152 @@
         }
         
         function deleteColumn(index) {
-            console.log('deleteColumn called with index:', index);
-            console.log('Current headers:', headers);
-            console.log('Column to delete:', headers[index]);
-            
             const columnName = headers[index];
-            
-            console.log('Deleting column:', columnName);
-            
-            // 헤더에서 제거
             headers.splice(index, 1);
-            
-            // 데이터에서 해당 열 제거
             for (let i = 0; i < csvData.length; i++) {
                 delete csvData[i][columnName];
             }
-            
-            console.log('New headers:', headers);
-            console.log('Rendering table...');
-            
             saveState();
             renderTable();
             updateStats();
-            
-            console.log('Table rendered');
         }
         
         function moveColumn(index, direction) {
             const newIndex = index + direction;
             if (newIndex < 0 || newIndex >= headers.length) return;
-            
             const temp = headers[index];
             headers[index] = headers[newIndex];
             headers[newIndex] = temp;
-            
             saveState();
             renderTable();
         }
         
         function downloadCSV() {
             const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const dateStr = now.toISOString().slice(0,10);
+            let cardName = currentFormat === '신용카드매입자료' ? '신용카드매입자료' : '데이터';
+            const fileName = `${dateStr}_${cardName}.csv`;
             
-            const dateTime = `${year}-${month}-${day}_${hours}${minutes}${seconds}`;
-            
-            // [수정] v3: 파일명 생성 로직 (v4: 신용카드매입자료 삭제)
-            let cardName = '데이터';
-            if (currentFormat === '일반전표전송' && detectedCard !== '알 수 없음') {
-                cardName = `일반전표 (${detectedCard} 변환)`;
-            } else if (currentFormat === '일반전표전송' && detectedCard === '알 수 없음') {
-                cardName = '일반전표 (양식)';
-            } else if (currentFormat === '원본' && detectedCard && detectedCard !== '알 수 없음') {
-                cardName = detectedCard;
-            } else if (currentFormat === '원본' && detectedCard === '알 수 없음') {
-                cardName = '알수없음';
-            }
-            
-            const fileName = `${dateTime}_${cardName}.csv`;
-            
-            const csv = Papa.unparse({
-                fields: headers,
-                data: csvData
-            });
-            
+            const csv = Papa.unparse({ fields: headers, data: csvData });
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = fileName;
             link.click();
-            
-            console.log('다운로드 파일명:', fileName);
         }
         
         function copyToClipboard() {
-            // CSV 형식으로 변환
-            const csv = Papa.unparse({
-                fields: headers,
-                data: csvData
-            });
-            
-            // 클립보드에 복사 (Fallback: document.execCommand('copy') 사용)
-            let success = false;
+            const csv = Papa.unparse({ fields: headers, data: csvData });
+            const textArea = document.createElement('textarea');
+            textArea.value = csv;
+            document.body.appendChild(textArea);
+            textArea.select();
             try {
-                const textArea = document.createElement('textarea');
-                textArea.value = csv;
-                
-                textArea.style.position = 'fixed';
-                textArea.style.top = '-9999px';
-                textArea.style.left = '-9999px';
-                
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                
-                success = document.execCommand('copy');
-                
-                document.body.removeChild(textArea);
-
-                if (success) {
-                    const originalText = copyBtn.textContent;
-                    copyBtn.textContent = '✅ 복사완료!';
-                    copyBtn.style.background = '#28a745';
-                    
-                    setTimeout(function() {
-                        copyBtn.textContent = originalText;
-                        copyBtn.style.background = ''; // 기본 .btn-success 스타일로 돌아감
-                    }, 2000);
-                    
-                    console.log('CSV 데이터가 클립보드에 복사되었습니다.');
-                } else {
-                    throw new Error('document.execCommand(copy) 실패');
-                }
-
+                document.execCommand('copy');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ 완료!';
+                setTimeout(() => copyBtn.textContent = originalText, 2000);
             } catch (err) {
-                console.error('복사 오류:', err);
-                
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(csv).then(function() {
-                        const originalText = copyBtn.textContent;
-                        copyBtn.textContent = '✅ 복사완료!';
-                        copyBtn.style.background = '#28a745';
-                        
-                        setTimeout(function() {
-                            copyBtn.textContent = originalText;
-                            copyBtn.style.background = '';
-                        }, 2000);
-                        console.log('CSV 데이터가 클립보드에 복사되었습니다 (Navigator).');
-                    }, function(clipErr) {
-                        showErrorModal('복사 실패', '클립보드에 복사하지 못했습니다. 브라우저 콘솔을 확인해주세요. (오류: ' + clipErr.message + ')');
-                        console.error('클립보드 복사 최종 실패:', clipErr);
-                    });
-                } else {
-                    showErrorModal('복사 미지원', '이 브라우저에서는 클립보드 복사를 지원하지 않거나, 보안 설정(HTTP)으로 인해 실패했습니다.');
-                }
+                showErrorModal('오류', '복사 실패');
             }
+            document.body.removeChild(textArea);
         }
         
         function updateStats() {
-            stats.innerHTML = '<strong>통계:</strong> 총 ' + csvData.length + '개 행 | ' + 
-                                headers.length + '개 열 | 열 이름: ' + headers.join(', ');
+            stats.innerHTML = `<strong>통계:</strong> 총 ${csvData.length}개 행 | ${headers.length}개 열`;
         }
 
-        // [신규] 커스텀 오류 모달 함수
         function showErrorModal(title, message) {
             const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1001;';
-            
-            const modalContent = document.createElement('div');
-            modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);';
-            
-            modalContent.innerHTML = `
-                <h2 style="margin-bottom: 15px; color: #dc3545;">⚠️ ${title}</h2>
-                <p style="margin-bottom: 25px; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
-                <button id="confirmError" style="padding: 10px 20px; border: none; background: #667eea; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600;">확인</button>
-            `;
-            
-            modal.appendChild(modalContent);
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1001;';
+            modal.innerHTML = `<div style="background:white;padding:30px;border-radius:12px;max-width:400px;text-align:center;"><h2 style="color:#dc3545;margin-bottom:15px;">⚠️ ${title}</h2><p>${message}</p><button onclick="this.parentElement.parentElement.remove()" style="padding:10px 20px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">확인</button></div>`;
             document.body.appendChild(modal);
-            
-            document.getElementById('confirmError').addEventListener('click', function() {
-                document.body.removeChild(modal);
-            });
-            
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    document.body.removeChild(modal);
-                }
-            });
         }
         
         function showPasteModal() {
-            // 모달 생성
             const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
-            
-            const modalContent = document.createElement('div');
-            modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%;';
-            
-            modalContent.innerHTML = `
-                <h2 style="margin-bottom: 20px;">CSV 데이터 붙여넣기</h2>
-                <p style="margin-bottom: 15px; color: #6c757d;">CSV 형식의 데이터를 복사한 후 아래 텍스트 영역에 붙여넣기(Ctrl+V)하세요.</p>
-                <div id="pasteErrorMsg" style="color: #dc3545; font-weight: bold; margin-bottom: 10px; display: none; font-size: 13px; text-align: left; background: #fff8f8; border: 1px solid #e5c6c6; padding: 8px; border-radius: 4px;"></div>
-                <textarea id="pasteArea" style="width: 100%; height: 300px; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 13px;" placeholder="예: 이름,나이,직업\n홍길동,30,개발자\n김철수,25,디자이너"></textarea>
-                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                    <button id="pasteFromClipboardBtn" style="padding: 10px 20px; border: none; background: #17a2b8; color: white; border-radius: 6px; cursor: pointer; margin-right: auto;">📋 붙여넣기</button>
-                    <button id="cancelPaste" style="padding: 10px 20px; border: none; background: #6c757d; color: white; border-radius: 6px; cursor: pointer;">취소</button>
-                    <button id="confirmPaste" style="padding: 10px 20px; border: none; background: #28a745; color: white; border-radius: 6px; cursor: pointer;">불러오기</button>
-                </div>
-            `;
-            
-            modal.appendChild(modalContent);
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
+            modal.innerHTML = `<div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:600px;"><h2>데이터 붙여넣기</h2><p style="color:#666;margin:10px 0;">CSV 데이터를 붙여넣으세요.</p><textarea id="pasteArea" style="width:100%;height:300px;padding:10px;border:2px solid #dee2e6;border-radius:6px;"></textarea><div style="margin-top:20px;text-align:right;"><button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">취소</button><button id="confirmPaste" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">확인</button></div></div>`;
             document.body.appendChild(modal);
-            
             const pasteArea = document.getElementById('pasteArea');
-            const pasteErrorMsg = document.getElementById('pasteErrorMsg');
             pasteArea.focus();
             
-            document.getElementById('pasteFromClipboardBtn').addEventListener('click', function() {
-                const errorMsg = '클립보드 읽기 실패! 브라우저 보안 정책으로 인해 차단되었습니다. 텍스트 영역에 직접 붙여넣기(Ctrl+V) 해주세요.';
-                if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText()
-                        .then(text => {
-                            pasteArea.value = text;
-                            console.log('클립보드에서 붙여넣기 완료.');
-                            pasteErrorMsg.style.display = 'none';
-                        })
-                        .catch(err => {
-                            console.error('클립보드 읽기 실패:', err);
-                            pasteErrorMsg.textContent = errorMsg;
-                            pasteErrorMsg.style.display = 'block';
-                            pasteArea.placeholder = '클립보드 읽기 실패! 여기에 Ctrl+V로 직접 붙여넣어주세요.';
-                        });
-                } else {
-                    const errorMsg = '자동 붙여넣기 미지원. 여기에 Ctrl+V로 직접 붙여넣어주세요.';
-                    pasteErrorMsg.textContent = errorMsg;
-                    pasteErrorMsg.style.display = 'block';
-                    pasteArea.placeholder = '자동 붙여넣기 미지원. 여기에 Ctrl+V로 직접 붙여넣어주세요.';
-                }
-            });
-            
-            document.getElementById('cancelPaste').addEventListener('click', function() {
-                document.body.removeChild(modal);
-            });
-            
-            document.getElementById('confirmPaste').addEventListener('click', function() {
+            document.getElementById('confirmPaste').onclick = () => {
                 const text = pasteArea.value;
-                if (text.trim()) {
-                    processPastedData(text);
-                    document.body.removeChild(modal);
-                } else {
-                    pasteErrorMsg.textContent = '데이터를 붙여넣어주세요.';
-                    pasteErrorMsg.style.display = 'block';
-                }
-            });
-            
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    document.body.removeChild(modal);
-                }
-            });
+                if(text.trim()) { processPastedData(text); modal.remove(); }
+            };
         }
         
-        function processPastedData(text) {
-            // CSV 형식으로 파싱 (쉼표로 구분)
-            Papa.parse(text, {
-                delimiter: ',',
-                header: true,
-                dynamicTyping: false,
-                skipEmptyLines: true,
-                // [수정] 헤더 정제 로직 (v4 - 모든 공백 제거)
-                transformHeader: function(header) {
-                    if (typeof header === 'string') {
-                        return header.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
-                    }
-                    return header;
-                },
-                complete: function(results) {
-                    if (results.data.length > 0) {
-                        // 기존 작업 모두 초기화
-                        headers = results.meta.fields;
-                        csvData = results.data;
-                        history = [];
-                        historyIndex = -1;
-                        
-                        // 카드사 판별
-                        detectCardType();
-                        
-                        // 초기 상태 저장
-                        currentFormat = '원본';
-                        saveState();
-                        
-                        renderTable();
-                        controls.classList.add('active');
-                        tableContainer.classList.add('active');
-                        stats.classList.add('active');
-                        updateStats();
-                        
-                        console.log('붙여넣기 데이터 로드 완료:', csvData.length, '행');
-                    } else {
-                        showErrorModal('파싱 오류', '붙여넣은 텍스트에서 유효한 CSV 데이터를 찾을 수 없습니다. 형식을 확인해주세요.');
-                    }
-                },
-                error: function(error) {
-                    showErrorModal('데이터 파싱 오류', '데이터를 처리하는 중 오류가 발생했습니다: ' + error.message);
-                }
-            });
-        }
-        
-        // [수정] v3: 기능 복구. v4: 신용카드매입자료 함수 삭제.
-        
-        // [수정] v3: '일반전표전송' 기능 (매핑 기능)
-        function processGeneralSlip() {
-            // 일반전표전송 헤더 (공백 제거된 버전)
-            const newHeaders = [
-                '카드종류(1자리)',
-                '신용카드사명(30자리이내)',
-                '신용카드번호(19자리이내)',
-                '승인일자',
-                '사업자등록번호',
-                '거래처명(15자리이내)',
-                '거래처유형',
-                '공급가액',
-                '세액',
-                '봉사료',
-                '합계금액',
-                '부가세공제여부',
-                '부가세유형(2자리)',
-                '계정과목',
-                '품목(적요)(30자리이내)',
-                '수량',
-                '단가',
-                '대표자(15자리이내)',
-                '업태(20자리이내)',
-                '종목(30자리이내)',
-                '사업장주소(80자리이내)',
-                '부서/사원코드(5자리이내)',
-                '현장코드(5자리이내)',
-                '프로젝트코드(4자리이내)',
-                '의제.재활용적요번호(차변)'
-            ];
+        // [통합 매핑 함수]
+        function processCreditCardPurchaseData() {
+            const newHeaders = mappingRules.map(r => r.label);
             
-            // [공통] 매핑 로직 함수 (엑셀 행 번호 기준, 1행이 헤더, 2행부터 데이터 시작)
-            // [수정] v4: 헤더 이름이 모두 공백제거된 상태로 전달됨
-            function getMappedRow(row, rowNum, cardName, idHeader, dateHeader, bizNumHeader, storeHeader, amountHeader) {
-                const newRow = {};
-                newRow['카드종류(1자리)'] = '1';
-                newRow['신용카드사명(30자리이내)'] = `="${cardName}"`; // 텍스트 형식 유지
-                newRow['신용카드번호(19자리이내)'] = row[idHeader] || '';
-                newRow['승인일자'] = row[dateHeader] || '';
-                newRow['사업자등록번호'] = row[bizNumHeader] || '';
-                newRow['거래처명(15자리이내)'] = row[storeHeader] || '';
-                newRow['거래처유형'] = '';
-                newRow['공급가액'] = `=IF(L${rowNum}="공제", ROUND(K${rowNum}/1.1, 0), "")`;
-                newRow['세액'] = `=IF(L${rowNum}="공제", K${rowNum}-H${rowNum}, "")`;
-                newRow['봉사료'] = '0';
-                newRow['합계금액'] = row[amountHeader] || '';
-                newRow['부가세공제여부'] = `=IF(M${rowNum}=57, "공제", "불공제")`;
-                newRow['부가세유형(2자리)'] = '57';
-                newRow['계정과목'] = '';
-                newRow['품목(적요)(30자리이내)'] = '';
-                newRow['수량'] = '';
-                newRow['단가'] = '';
-                newRow['대표자(15자리이내)'] = '';
-                newRow['업태(20자리이내)'] = '';
-                newRow['종목(30자리이내)'] = '';
-                newRow['사업장주소(80자리이내)'] = '';
-                newRow['부서/사원코드(5자리이내)'] = '';
-                newRow['현장코드(5자리이내)'] = '';
-                newRow['프로젝트코드(4자리이내)'] = '';
-                newRow['의제.재활용적요번호(차변)'] = '';
-                return newRow;
+            // [신규] 1. 마지막 행에서 카드사명 감지
+            const knownCardNames = ['BNK경남은행','KB국민카드','NH농협카드','롯데카드','삼성카드','신한카드','현대카드','하나카드','기업비씨카드'];
+            let detectedCardName = '';
+            let dataToMap = csvData;
+
+            if (csvData.length > 0) {
+                // 마지막 행 가져오기
+                const lastRow = csvData[csvData.length - 1];
+                const lastRowValues = Object.values(lastRow).map(v => String(v).replace(/\s/g, '')); // 비교를 위해 공백 제거
+                
+                for (const name of knownCardNames) {
+                    const cleanName = name.replace(/\s/g, '');
+                    // 마지막 행의 값 중 하나라도 카드사 이름을 포함하면 감지
+                    if (lastRowValues.some(v => v.includes(cleanName))) {
+                        detectedCardName = name;
+                        // 마지막 행은 데이터가 아니므로 제거하고 매핑 시작
+                        dataToMap = csvData.slice(0, -1);
+                        console.log(`마지막 행에서 카드사 감지됨: ${name}. 마지막 행 제거 후 매핑 진행.`);
+                        break;
+                    }
+                }
+            }
+
+            // 2. 공백이 제거된 키로 값 찾기
+            function findValue(row, candidates) {
+                for (let c of candidates) {
+                    const key = c.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
+                    if (Object.prototype.hasOwnProperty.call(row, key) && row[key] !== undefined && row[key] !== '') {
+                        return row[key];
+                    }
+                }
+                return '';
             }
 
             let newData = [];
-            let isMapped = false;
-            
-            // [수정] v4: 16개 카드사 매핑 (헤더 이름은 v4 기준 공백 제거됨)
-            if (detectedCard === '신한카드' && csvData.length > 0) {
-                console.log('신한카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '신한카드', '이용카드', '이용일', '사업자번호', '이용가맹점', '이용금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '신한카드 (v2)' && csvData.length > 0) {
-                console.log('신한카드 v2 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '신한카드', '카드번호', '거래일', '사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '삼성카드' && csvData.length > 0) {
-                console.log('삼성카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '삼성카드', '카드번호', '이용일', '사업자번호', '가맹점명', '이용금액(원)'));
-                isMapped = true;
-            }
-            else if (detectedCard === 'KB 국민카드' && csvData.length > 0) {
-                console.log('KB 국민카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, 'KB 국민카드', '카드번호', '매출일', '사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === 'KB 국민카드 (v2)' && csvData.length > 0) {
-                console.log('KB 국민카드 v2 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, 'KB 국민카드', '카드번호', '매출일', '가맹점사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === 'KB 국민카드 (v3)' && csvData.length > 0) {
-                console.log('KB 국민카드 v3 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, 'KB 국민카드', '카드번호', '이용일', '사업자번호', '이용하신곳', '이용금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === 'BNK 경남은행' && csvData.length > 0) {
-                console.log('BNK 경남은행 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, 'BNk 경남은행', '카드번호', '매출일자', '사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === 'NH 농협카드' && csvData.length > 0) {
-                console.log('NH 농협카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, 'NH 농협카드', '카드번호', '매출일자', '사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '하나카드' && csvData.length > 0) {
-                console.log('하나카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '하나카드', '카드번호', '승인일시', '사업자번호', '가맹점명', '승인금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '하나카드 (v2)' && csvData.length > 0) {
-                console.log('하나카드 v2 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '하나카드', '카드번호', '승인일자', '사업자번호', '가맹점명', '승인금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '현대카드' && csvData.length > 0) {
-                console.log('현대카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '현대카드', '카드번호', '이용일자', '사업자번호', '가맹점명', '이용금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '현대카드 (v2)' && csvData.length > 0) {
-                console.log('현대카드 v2 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '현대카드', '카드명(카드번호뒤4자리)', '이용일', '사업자번호', '가맹점명', '이용금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '롯데카드' && csvData.length > 0) {
-                console.log('롯데카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '롯데카드', '카드번호', '매출일자', '사업자번호', '가맹점명', '매출금액'));
-                isMapped = true;
-            }
-            else if (detectedCard === '롯데카드 (v2)' && csvData.length > 0) {
-                console.log('롯데카드 v2 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '롯데카드', '카드번호', '매출일자', '사업자번호', '가맹점명', '매출금액')); // [수정] v4: '사업자 번호' -> '사업자번호'
-                isMapped = true;
-            }
-            else if (detectedCard === '우리카드' && csvData.length > 0) {
-                console.log('우리카드 v1 매핑 중...');
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '우리카드', '이용카드', '매출일자', '사업자번호', '가맹점명', '매출금액(원)'));
-                isMapped = true;
-            }
-            else if (detectedCard === '기업비씨카드' && csvData.length > 0) {
-                console.log('기업비씨카드 v1 매핑 중...');
-                // [수정] v4: 기업비씨카드는 '합계금액'이 '공급가액'임
-                newData = csvData.map((row, i) => getMappedRow(row, i + 2, '기업비씨카드', '카드회원번호', '거래일자', '사업자등록번호', '상호', '공급가액'));
-                isMapped = true;
-            }
-
-            // 최종 적용
-            if (isMapped) {
+            if (dataToMap.length > 0) {
+                console.log('통합 매핑 시작');
+                newData = dataToMap.map((row, i) => {
+                    const rowNum = i + 2;
+                    const mappedRow = {};
+                    
+                    mappingRules.forEach(rule => {
+                        if (rule.type === 'fixed') {
+                            mappedRow[rule.label] = rule.value;
+                        } else if (rule.type === 'card_name') {
+                            // [신규] 감지된 카드사명이 있으면 사용, 없으면 빈 값
+                            mappedRow[rule.label] = detectedCardName ? `="${detectedCardName}"` : '';
+                        } else if (rule.type === 'header') {
+                            mappedRow[rule.label] = findValue(row, rule.candidates);
+                        } else if (rule.type === 'formula') {
+                            mappedRow[rule.label] = rule.formula(rowNum);
+                        } else {
+                            mappedRow[rule.label] = '';
+                        }
+                    });
+                    return mappedRow;
+                });
+                
                 headers = newHeaders;
                 csvData = newData;
-                console.log(`${detectedCard} 데이터 매핑 완료 (함수 포함):`, csvData.length, '행');
             } else {
-                // 지원되지 않는 카드사이거나 데이터가 없으면 빈 템플릿
                 headers = newHeaders;
                 csvData = [];
-                console.log('일반전표전송 빈 템플릿으로 변경');
             }
             
-            currentFormat = '일반전표전송'; // 형식 변경 추적
+            currentFormat = '신용카드매입자료';
             saveState();
             renderTable();
             updateStats();
