@@ -402,10 +402,11 @@
         // [통합 매핑 규칙] 매핑데이터.csv 파일 기준
         const mappingRules = [
             { id: 'col1', label: '카드종류(1자리)', type: 'fixed', value: '1' },
-            // 신용카드사명: 마지막 행에서 감지되면 그 값을 사용, 없으면 빈 값
+            // 신용카드사명: 마지막 행에서 감지되면 그 값을 사용 (파일명의 규칙 반영)
             { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name' }, 
             { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호','이용카드','이용 카드','카드명(카드번호뒤4자리)','카드명(카드번호 뒤 4자리)','카드회원번호'] },
-            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자','매출일','이용일자','이용일','거래일자','거래일','승인일시','승인일자'] },
+            // [수정] 승인일자 후보군: '승인일' 추가 (매핑데이터.csv 반영)
+            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자','매출일','이용일자','이용일','거래일자','거래일','승인일시','승인일자','승인일'] },
             { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호','사업자번호','가맹점사업자번호'] },
             { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명','이용하신곳','이용가맹점','상호'] },
             { id: 'col7', label: '거래처유형', type: 'empty' },
@@ -733,8 +734,8 @@
         function processCreditCardPurchaseData() {
             const newHeaders = mappingRules.map(r => r.label);
             
-            // [신규] 1. 마지막 행에서 카드사명 감지
-            const knownCardNames = ['BNK경남은행','KB국민카드','NH농협카드','롯데카드','삼성카드','신한카드','현대카드','하나카드','기업비씨카드'];
+            // [신규] 1. 마지막 행에서 카드사명 감지 (매핑데이터.csv 파일 기준 목록)
+            const knownCardNames = ['BNK경남은행','KB국민카드','NH농협카드','롯데카드','삼성카드','신한카드','현대카드','하나카드','기업비씨카드','비씨카드'];
             let detectedCardName = '';
             let dataToMap = csvData;
 
@@ -778,7 +779,6 @@
                         if (rule.type === 'fixed') {
                             mappedRow[rule.label] = rule.value;
                         } else if (rule.type === 'card_name') {
-                            // [신규] 감지된 카드사명이 있으면 사용, 없으면 빈 값
                             mappedRow[rule.label] = detectedCardName ? `="${detectedCardName}"` : '';
                         } else if (rule.type === 'header') {
                             mappedRow[rule.label] = findValue(row, rule.candidates);
