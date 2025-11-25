@@ -18,7 +18,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            padding-bottom: 80px; /* 패치노트 버튼 공간 확보 */
+            padding-bottom: 20px; /* 패치노트 버튼 이동으로 여백 축소 */
         }
 
         .container {
@@ -45,6 +45,16 @@
         .header p {
             opacity: 0.9;
             font-size: 14px;
+        }
+
+        /* 헤더 버튼 래퍼 추가 */
+        .header-btn-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+            min-height: 40px;
         }
 
         .upload-area {
@@ -411,33 +421,50 @@
             border-color: #667eea;
         }
 
-        /* 패치노트 버튼 스타일 */
+        /* 패치노트 버튼 스타일 수정 */
         .patch-note-btn {
-            position: fixed;
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #dee2e6;
-            padding: 8px 24px;
-            border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            color: #666;
-            transition: all 0.3s;
-            z-index: 100;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            z-index: 1;
         }
 
         .patch-note-btn:hover {
-            background: white;
-            color: #667eea;
-            transform: translateX(-50%) translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 모바일 대응 */
+        @media (max-width: 600px) {
+            .header-btn-wrapper {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .patch-note-btn {
+                position: static;
+                transform: none;
+                width: auto;
+                justify-content: center;
+                margin-top: 5px;
+            }
+            .patch-note-btn:hover {
+                transform: translateY(-2px);
+            }
         }
 
         /* 패치노트 리스트 스타일 */
@@ -489,9 +516,14 @@
         <div class="header">
             <h1>📊 CSV/TSV 데이터 편집 도구</h1>
             <p>CSV 또는 TSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
-            <button class="btn" id="editMappingBtn"
-                style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); margin-top: 15px;">⚙️
-                매핑 구성요소 편집</button>
+            
+            <div class="header-btn-wrapper">
+                <button class="btn" id="editMappingBtn"
+                    style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); margin: 0;">⚙️
+                    매핑 구성요소 편집</button>
+                
+                <button class="patch-note-btn" id="patchNoteBtn">📢 패치노트</button>
+            </div>
         </div>
 
         <div class="upload-area">
@@ -499,7 +531,6 @@
                 <div class="upload-icon">📁</div>
                 <h3>파일 업로드</h3>
                 <p style="margin-top: 10px; color: #6c757d;">CSV, TSV 파일 드래그 또는 클릭</p>
-                <!-- accept 속성에 .tsv 추가 -->
                 <input type="file" id="fileInput" accept=".csv, .tsv, .txt">
             </div>
             <div class="paste-box" id="pasteBox">
@@ -525,7 +556,6 @@
             </div>
             <div class="separator"></div>
             <div class="control-group">
-                <!-- 출력 포맷 선택 라디오 버튼 추가 -->
                 <div class="format-selector">
                     <label><input type="radio" name="outputFormat" value="csv"> CSV</label>
                     <label><input type="radio" name="outputFormat" value="tsv" checked> TSV</label>
@@ -545,15 +575,13 @@
         <div class="stats" id="stats"></div>
     </div>
 
-    <!-- 패치노트 버튼 -->
-    <button class="patch-note-btn" id="patchNoteBtn">📢 패치노트</button>
+    <!-- 패치노트 버튼은 header 내부로 이동되었습니다. -->
 
     <script>
         let csvData = [];
         let headers = [];
         let currentFormat = '원본';
 
-        // 실행취소/다시실행을 위한 히스토리
         let history = [];
         let historyIndex = -1;
 
@@ -573,7 +601,6 @@
         const editMappingBtn = document.getElementById('editMappingBtn');
         const patchNoteBtn = document.getElementById('patchNoteBtn');
 
-        // 패치노트 데이터
         const patchNotesData = [
             {
                 version: 'v1.5',
@@ -616,14 +643,10 @@
             }
         ];
 
-        // [통합 매핑 규칙] 기본값 업데이트
         const defaultMappingRules = [
             { id: 'col1', label: '카드종류(1자리)', type: 'fixed', value: '1' },
-            // 신용카드사명: 업데이트됨 (비씨카드, 우체국체크카드, 우체국 추가)
             { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name', candidates: ['BNK경남은행', 'KB국민카드', 'NH농협카드', '롯데카드', '삼성카드', '신한카드', '현대카드', '하나카드', '기업비씨카드', '비씨카드', '우체국체크카드', '우체국'] },
-            // 신용카드번호: 업데이트됨 (이용 카드 등 공백 포함된 것들 제거, 매핑데이터 기준)
             { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호', '이용카드', '카드명(카드번호뒤4자리)', '카드회원번호'] },
-            // 승인일자: 업데이트됨 (접수일자 추가)
             { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자', '매출일', '이용일자', '이용일', '거래일자', '거래일', '승인일시', '승인일자', '승인일', '접수일자'] },
             { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호', '사업자번호', '가맹점사업자번호'] },
             { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명', '이용하신곳', '이용가맹점', '상호'] },
@@ -696,7 +719,6 @@
             e.preventDefault();
             uploadBox.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            // 파일 확장자 체크 (.csv, .tsv, .txt)
             if (file && (file.name.endsWith('.csv') || file.name.endsWith('.CSV') || file.name.endsWith('.tsv') || file.name.endsWith('.TSV') || file.name.endsWith('.txt'))) {
                 handleFile(file);
             } else {
@@ -725,7 +747,7 @@
         redoBtn.addEventListener('click', redo);
         editMappingBtn.addEventListener('click', showMappingEditModal);
         
-        // 패치노트 모달 열기
+        // 패치노트 모달
         patchNoteBtn.addEventListener('click', function() {
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
@@ -1040,23 +1062,18 @@
             copyTextToClipboard(dataStr, format);
         }
 
-        // [신규] 헤더 제거 복사 함수 및 수식 행 번호 조정
         function copyNoHeaderToClipboard() {
             const format = document.querySelector('input[name="outputFormat"]:checked').value;
             const delimiter = format === 'tsv' ? '\t' : ',';
 
-            // 데이터 복사본 생성 및 수식 행 번호 조정 (10행 기준)
             const modifiedData = csvData.map((row, index) => {
                 const newRow = { ...row };
-                const currentFileRow = index + 2; // 현재 파일에서의 행 번호 (헤더가 1행이므로 데이터는 2행부터)
-                const targetStartRow = 10; // 목표 시작 행 번호
+                const currentFileRow = index + 2;
+                const targetStartRow = 10;
 
                 for (let key in newRow) {
                     let value = newRow[key];
-                    // 값이 문자열이고 '='로 시작하는 수식인 경우
                     if (typeof value === 'string' && value.startsWith('=')) {
-                        // 정규식으로 셀 참조(알파벳+숫자)를 찾아서 행 번호 변경
-                        // 현재 파일에서의 행 번호(currentFileRow)와 일치하는 숫자만 10행 기준으로 변경
                         newRow[key] = value.replace(/([A-Z]+)([0-9]+)/g, (match, col, rowStr) => {
                             const rowNum = parseInt(rowStr);
                             if (rowNum === currentFileRow) {
@@ -1069,7 +1086,6 @@
                 return newRow;
             });
 
-            // header: false 옵션으로 헤더 제외
             const dataStr = Papa.unparse(modifiedData, { 
                 delimiter: delimiter,
                 header: false 
@@ -1078,7 +1094,6 @@
             copyTextToClipboard(dataStr, format + " (헤더제거)");
         }
 
-        // 복사 로직 공통화
         function copyTextToClipboard(text, label) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
@@ -1086,7 +1101,6 @@
             textArea.select();
             try {
                 document.execCommand('copy');
-                // 버튼 텍스트 변경을 위해 조건 처리
                 const btn = label.includes('헤더제거') ? copyNoHeaderBtn : copyBtn;
                 const originalText = btn.textContent;
                 btn.textContent = `✅ ${label.toUpperCase()} 완료!`;
@@ -1126,7 +1140,6 @@
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
 
-            // 모달 내용을 렌더링하는 함수 (가져오기 후 UI 갱신을 위해 분리)
             function renderModalContent() {
                 let rowsHtml = mappingRules.map((rule, index) => {
                     let inputHtml = '';
@@ -1149,26 +1162,10 @@
                 
                 const container = modal.querySelector('.mapping-rows-container');
                 if(container) container.innerHTML = rowsHtml;
-                return rowsHtml; // 초기 렌더링용
+                return rowsHtml;
             }
 
-            const initialRowsHtml = mappingRules.map((rule, index) => { // 초기 렌더링 로직 복사 (위 함수 재사용 전이라)
-                let inputHtml = '';
-                if (rule.type === 'header' || rule.type === 'card_name') {
-                    inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="candidates" value="${rule.candidates ? rule.candidates.join(',') : ''}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">
-                    <div style="font-size:11px;color:#888;margin-top:2px;">${rule.type === 'card_name' ? '감지할 카드사명을 쉼표(,)로 구분하여 입력' : '쉼표(,)로 구분하여 입력'}</div>`;
-                } else if (rule.type === 'fixed') {
-                    inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="value" value="${rule.value}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">`;
-                } else {
-                    inputHtml = `<span style="color:#999;font-size:12px;">(자동 계산/고정 로직)</span>`;
-                }
-                return `
-                    <div style="display:flex;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:10px;">
-                        <div style="width:180px;font-weight:bold;font-size:13px;padding-top:6px;">${rule.label}</div>
-                        <div style="flex:1;">${inputHtml}</div>
-                    </div>
-                `;
-            }).join('');
+            const initialRowsHtml = renderModalContent();
 
             modal.innerHTML = `
                 <div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:800px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
@@ -1194,11 +1191,9 @@
 
             document.body.appendChild(modal);
 
-            // 내보내기 기능
             modal.querySelector('.btn-export').onclick = () => {
-                // 1. 현재 모달의 입력값들을 mappingRules 객체에 먼저 반영 (저장 안해도 내보내기는 현재 입력값 기준)
                 const inputs = modal.querySelectorAll('.mapping-input');
-                const tempRules = JSON.parse(JSON.stringify(mappingRules)); // 깊은 복사
+                const tempRules = JSON.parse(JSON.stringify(mappingRules));
                 
                 inputs.forEach(input => {
                     const index = input.dataset.index;
@@ -1211,7 +1206,6 @@
                     }
                 });
 
-                // 2. CSV 데이터 생성
                 const exportData = tempRules.map(rule => ({
                     id: rule.id,
                     label: rule.label,
@@ -1228,12 +1222,11 @@
                 link.click();
             };
 
-            // 가져오기 기능
             modal.querySelector('.btn-import').onclick = () => {
-                document.getElementById('importRuleFile').click();
+                modal.querySelector('#importRuleFile').click();
             };
 
-            document.getElementById('importRuleFile').onchange = (e) => {
+            modal.querySelector('#importRuleFile').onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
@@ -1244,7 +1237,6 @@
                         if (results.data && results.data.length > 0) {
                             let updatedCount = 0;
                             results.data.forEach(row => {
-                                // ID 기준으로 매핑 규칙 찾아서 업데이트
                                 const targetRule = mappingRules.find(r => r.id === row.id);
                                 if (targetRule) {
                                     if (row.candidates !== undefined && (targetRule.type === 'header' || targetRule.type === 'card_name')) {
@@ -1258,7 +1250,6 @@
                                 }
                             });
                             
-                            // UI 갱신
                             renderModalContent();
                             
                             const toast = document.createElement('div');
@@ -1269,28 +1260,41 @@
                         }
                     },
                     error: function(err) {
-                        alert('CSV 파싱 오류: ' + err.message);
+                        // Use a custom modal instead of alert()
+                        showErrorModal('CSV 파싱 오류', err.message);
                     }
                 });
-                // 같은 파일 다시 선택 가능하게 초기화
                 e.target.value = ''; 
             };
 
             modal.querySelector('.btn-close').onclick = () => modal.remove();
 
             modal.querySelector('.btn-reset').onclick = () => {
-                if (confirm('모든 매핑 설정을 초기값으로 되돌리시겠습니까?')) {
+                // Use a custom modal instead of confirm()
+                const confirmModal = document.createElement('div');
+                confirmModal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2002;';
+                confirmModal.innerHTML = `
+                    <div style="background:white;padding:30px;border-radius:12px;max-width:400px;text-align:center;">
+                        <h2 style="color:#667eea;margin-bottom:15px;">설정 초기화</h2>
+                        <p style="margin-bottom:20px;">모든 매핑 설정을 초기값으로 되돌리시겠습니까?</p>
+                        <button id="confirmReset" style="padding:10px 20px;background:#dc3545;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">초기화</button>
+                        <button onclick="this.parentElement.parentElement.remove()" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;">취소</button>
+                    </div>`;
+                document.body.appendChild(confirmModal);
+
+                document.getElementById('confirmReset').onclick = () => {
                     localStorage.removeItem('csvMappingRules');
                     mappingRules = defaultMappingRules.map(r => ({ ...r }));
                     modal.remove();
-                    showMappingEditModal(); // 다시 열어서 초기화된 값 보여주기
+                    showMappingEditModal();
+                    confirmModal.remove(); // Close confirm modal
 
                     const toast = document.createElement('div');
                     toast.textContent = '🔄 설정이 초기화되었습니다.';
                     toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:2000;animation:fadeInOut 2s forwards;';
                     document.body.appendChild(toast);
                     setTimeout(() => toast.remove(), 2000);
-                }
+                };
             };
 
             modal.querySelector('.btn-save').onclick = () => {
@@ -1306,9 +1310,8 @@
                         mappingRules[index].value = val;
                     }
                 });
-                saveMappingRules(); // 저장 함수 호출
+                saveMappingRules();
                 modal.remove();
-                // 간단한 토스트 메시지
                 const toast = document.createElement('div');
                 toast.textContent = '✅ 매핑 규칙이 저장되었습니다.';
                 toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:2000;animation:fadeInOut 2s forwards;';
@@ -1317,4 +1320,76 @@
             };
         }
 
-        // [통합 매핑 함수]
+        function processCreditCardPurchaseData() {
+            const newHeaders = mappingRules.map(r => r.label);
+            const cardNameRule = mappingRules.find(r => r.type === 'card_name');
+            const knownCardNames = cardNameRule ? cardNameRule.candidates : [];
+
+            let detectedCardName = '';
+            let dataToMap = csvData;
+
+            if (csvData.length > 0) {
+                const lastRow = csvData[csvData.length - 1];
+                const lastRowValues = Object.values(lastRow).map(v => String(v).replace(/\s/g, ''));
+
+                for (const name of knownCardNames) {
+                    const cleanName = name.replace(/\s/g, '');
+                    if (lastRowValues.some(v => v.includes(cleanName))) {
+                        detectedCardName = name;
+                        dataToMap = csvData.slice(0, -1);
+                        console.log(`마지막 행에서 카드사 감지됨: ${name}. 마지막 행 제거 후 매핑 진행.`);
+                        break;
+                    }
+                }
+            }
+
+            function findValue(row, candidates) {
+                for (let c of candidates) {
+                    const key = c.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
+                    if (Object.prototype.hasOwnProperty.call(row, key) && row[key] !== undefined && row[key] !== '') {
+                        return row[key];
+                    }
+                }
+                return '';
+            }
+
+            let newData = [];
+            if (dataToMap.length > 0) {
+                console.log('통합 매핑 시작');
+                newData = dataToMap.map((row, i) => {
+                    const rowNum = i + 2;
+                    const mappedRow = {};
+
+                    mappingRules.forEach(rule => {
+                        if (rule.type === 'fixed') {
+                            mappedRow[rule.label] = rule.value;
+                        } else if (rule.type === 'card_name') {
+                            // 엑셀에서 문자열로 인식되도록 ="" 형식으로 저장
+                            mappedRow[rule.label] = detectedCardName ? `="${detectedCardName}"` : '';
+                        } else if (rule.type === 'header') {
+                            mappedRow[rule.label] = findValue(row, rule.candidates);
+                        } else if (rule.type === 'formula') {
+                            mappedRow[rule.label] = rule.formula(rowNum);
+                        } else {
+                            mappedRow[rule.label] = '';
+                        }
+                    });
+                    return mappedRow;
+                });
+
+                headers = newHeaders;
+                csvData = newData;
+            } else {
+                headers = newHeaders;
+                csvData = [];
+            }
+
+            currentFormat = '신용카드매입자료';
+            saveState();
+            renderTable();
+            updateStats();
+        }
+    </script>
+</body>
+
+</html>
