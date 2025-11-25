@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV 편집 도구</title>
+    <title>CSV/TSV 데이터 편집 도구</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         * {
@@ -11,40 +12,40 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
-        
+
         .header h1 {
             font-size: 32px;
             margin-bottom: 10px;
         }
-        
+
         .header p {
             opacity: 0.9;
             font-size: 14px;
         }
-        
+
         .upload-area {
             padding: 20px 40px;
             text-align: center;
@@ -52,7 +53,7 @@
             display: flex;
             gap: 20px;
         }
-        
+
         .upload-box {
             border: 3px dashed #667eea;
             border-radius: 12px;
@@ -62,7 +63,7 @@
             transition: all 0.3s;
             flex: 1;
         }
-        
+
         .paste-box {
             border: 3px dashed #28a745;
             border-radius: 12px;
@@ -72,36 +73,36 @@
             transition: all 0.3s;
             flex: 1;
         }
-        
+
         .upload-box:hover {
             border-color: #764ba2;
             background: #f0f2ff;
         }
-        
+
         .paste-box:hover {
             border-color: #1e7e34;
             background: #e6f9ed;
         }
-        
+
         .upload-box.dragover {
             background: #e8ebff;
             border-color: #764ba2;
         }
-        
+
         .paste-box.active {
             background: #e6f9ed;
             border-color: #1e7e34;
         }
-        
+
         .upload-icon {
             font-size: 36px;
             margin-bottom: 15px;
         }
-        
+
         input[type="file"] {
             display: none;
         }
-        
+
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -114,67 +115,67 @@
             transition: transform 0.2s, box-shadow 0.2s;
             margin: 3px;
         }
-        
+
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
-        
+
         .btn:active {
             transform: translateY(0);
         }
-        
+
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        
+
         .btn-info {
             background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
         }
-        
+
         .btn-warning {
             background: #ffc107;
             color: #000;
         }
-        
+
         .btn-warning:hover {
             box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
         }
-        
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         .btn:disabled:hover {
             transform: none;
             box-shadow: none;
         }
-        
+
         .btn-secondary {
             background: #6c757d;
         }
-        
+
         .btn-danger {
             background: #dc3545;
         }
-        
+
         .btn-success {
             background: #28a745;
         }
-        
+
         .controls {
             padding: 15px 30px;
             background: #f8f9fa;
             border-bottom: 2px solid #e9ecef;
             display: none;
         }
-        
+
         .controls.active {
             display: block;
         }
-        
+
         .control-group {
             display: flex;
             gap: 8px;
@@ -182,60 +183,61 @@
             align-items: center;
             margin-bottom: 10px;
         }
-        
+
         .control-group:last-child {
             margin-bottom: 0;
         }
-        
+
         .separator {
             width: 100%;
             height: 1px;
             background: #dee2e6;
             margin: 8px 0;
         }
-        
+
         .table-container {
             padding: 40px;
             display: none;
         }
-        
+
         .table-container.active {
             display: block;
         }
-        
+
         .table-wrapper {
             overflow-x: auto;
             overflow-y: auto;
             max-height: 500px;
         }
-        
+
         table {
             width: max-content;
             min-width: 100%;
             border-collapse: collapse;
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
-        th, td {
+
+        th,
+        td {
             padding: 4px 8px;
             text-align: left;
             border: 1px solid #dee2e6;
             white-space: nowrap;
             font-size: 12px;
         }
-        
+
         /* 셀 편집 스타일 */
         td[contenteditable="true"] {
             background-color: #fefefe;
             outline: none;
         }
-        
+
         td[contenteditable="true"]:focus {
             background-color: #fff;
             box-shadow: 0 0 0 2px #667eea inset;
         }
-        
+
         th {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -244,47 +246,47 @@
             top: 0;
             z-index: 10;
         }
-        
+
         th.row-number {
             background: #495057;
             text-align: center;
             min-width: 40px;
         }
-        
+
         td.row-number {
             background: #f8f9fa;
             font-weight: 600;
             text-align: center;
             color: #6c757d;
         }
-        
+
         tr:nth-child(even) {
             background: #f8f9fa;
         }
-        
+
         tr:hover {
             background: #e9ecef;
         }
-        
+
         .column-header {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 5px;
         }
-        
+
         .column-header-text {
             text-align: center;
         }
-        
+
         .column-controls {
             display: flex;
             gap: 3px;
             justify-content: center;
         }
-        
+
         .col-btn {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
             padding: 1px 4px;
@@ -294,11 +296,11 @@
             transition: background 0.2s;
             line-height: 1;
         }
-        
+
         .col-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
         }
-        
+
         input[type="text"] {
             padding: 6px 10px;
             border: 2px solid #dee2e6;
@@ -306,12 +308,12 @@
             font-size: 13px;
             width: 150px;
         }
-        
+
         input[type="text"]:focus {
             outline: none;
             border-color: #667eea;
         }
-        
+
         .stats {
             padding: 20px 40px;
             background: #f8f9fa;
@@ -320,33 +322,121 @@
             font-size: 14px;
             color: #6c757d;
         }
-        
+
         .stats.active {
             display: block;
         }
+
+        /* 행 삭제 버튼 스타일 */
+        .row-del-btn {
+            background: transparent;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 2px 6px;
+            opacity: 0.5;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+
+        .row-del-btn:hover {
+            opacity: 1;
+            background-color: rgba(220, 53, 69, 0.1);
+            transform: scale(1.1);
+        }
+
+        th.row-action,
+        td.row-action {
+            text-align: center;
+            width: 50px;
+            min-width: 50px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        th.row-action {
+            background: #495057;
+            color: white;
+        }
+
+        /* 라디오 버튼 그룹 스타일 */
+        .format-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            margin-right: 5px;
+        }
+
+        .format-selector label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+            cursor: pointer;
+        }
+
+        .format-selector input[type="radio"] {
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        /* 헤더 텍스트 편집 스타일 추가 */
+        .column-header-text {
+            text-align: center;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            min-width: 30px;
+        }
+
+        .column-header-text[contenteditable="true"]:hover {
+            background: rgba(255, 255, 255, 0.2);
+            cursor: text;
+        }
+
+        .column-header-text[contenteditable="true"]:focus {
+            background: white;
+            color: #333;
+            outline: none;
+            box-shadow: 0 0 0 2px #667eea;
+            border-color: #667eea;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 CSV 데이터 편집 도구</h1>
-            <p>CSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
+            <h1>📊 CSV/TSV 데이터 편집 도구</h1>
+            <p>CSV 또는 TSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
+            <button class="btn" id="editMappingBtn"
+                style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); margin-top: 15px;">⚙️
+                매핑 구성요소 편집</button>
         </div>
-        
+
         <div class="upload-area">
             <div class="upload-box" id="uploadBox">
                 <div class="upload-icon">📁</div>
-                <h3>CSV 파일 업로드</h3>
-                <p style="margin-top: 10px; color: #6c757d;">드래그하거나 클릭하여 업로드</p>
-                <input type="file" id="fileInput" accept=".csv">
+                <h3>파일 업로드</h3>
+                <p style="margin-top: 10px; color: #6c757d;">CSV, TSV 파일 드래그 또는 클릭</p>
+                <!-- accept 속성에 .tsv 추가 -->
+                <input type="file" id="fileInput" accept=".csv, .tsv, .txt">
             </div>
             <div class="paste-box" id="pasteBox">
                 <div class="upload-icon">📋</div>
                 <h3>데이터 붙여넣기</h3>
-                <p style="margin-top: 10px; color: #6c757d;">Excel 데이터를 복사하여 클릭</p>
+                <p style="margin-top: 10px; color: #6c757d;">Excel/Spreadsheet 데이터 복사</p>
             </div>
         </div>
-        
+
         <div class="controls" id="controls">
             <div class="control-group">
                 <button class="btn btn-warning" id="undoBtn" disabled>↩️ 실행취소</button>
@@ -363,29 +453,35 @@
             </div>
             <div class="separator"></div>
             <div class="control-group">
+                <!-- 출력 포맷 선택 라디오 버튼 추가 -->
+                <div class="format-selector">
+                    <label><input type="radio" name="outputFormat" value="csv"> CSV</label>
+                    <label><input type="radio" name="outputFormat" value="tsv" checked> TSV</label>
+                </div>
                 <button class="btn btn-secondary" id="downloadBtn">💾 다운로드</button>
                 <button class="btn btn-success" id="copyBtn">📋 복사</button>
+                <button class="btn btn-info" id="copyNoHeaderBtn">📋 헤더제거 복사</button>
             </div>
         </div>
-        
+
         <div class="table-container" id="tableContainer">
             <div class="table-wrapper">
                 <table id="dataTable"></table>
             </div>
         </div>
-        
+
         <div class="stats" id="stats"></div>
     </div>
 
     <script>
         let csvData = [];
         let headers = [];
-        let currentFormat = '원본'; 
-        
+        let currentFormat = '원본';
+
         // 실행취소/다시실행을 위한 히스토리
         let history = [];
         let historyIndex = -1;
-        
+
         const fileInput = document.getElementById('fileInput');
         const uploadBox = document.getElementById('uploadBox');
         const pasteBox = document.getElementById('pasteBox');
@@ -398,22 +494,25 @@
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
         const copyBtn = document.getElementById('copyBtn');
-        
-        // [통합 매핑 규칙] 매핑데이터.csv 파일 기준
-        const mappingRules = [
+        const copyNoHeaderBtn = document.getElementById('copyNoHeaderBtn');
+        const editMappingBtn = document.getElementById('editMappingBtn');
+
+        // [통합 매핑 규칙] 기본값 업데이트
+        const defaultMappingRules = [
             { id: 'col1', label: '카드종류(1자리)', type: 'fixed', value: '1' },
-            // 신용카드사명: 마지막 행에서 감지되면 그 값을 사용 (파일명의 규칙 반영)
-            { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name' }, 
-            { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호','이용카드','이용 카드','카드명(카드번호뒤4자리)','카드명(카드번호 뒤 4자리)','카드회원번호'] },
-            // [수정] 승인일자 후보군: '승인일' 추가 (매핑데이터.csv 반영)
-            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자','매출일','이용일자','이용일','거래일자','거래일','승인일시','승인일자','승인일'] },
-            { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호','사업자번호','가맹점사업자번호'] },
-            { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명','이용하신곳','이용가맹점','상호'] },
+            // 신용카드사명: 업데이트됨 (비씨카드, 우체국체크카드, 우체국 추가)
+            { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name', candidates: ['BNK경남은행', 'KB국민카드', 'NH농협카드', '롯데카드', '삼성카드', '신한카드', '현대카드', '하나카드', '기업비씨카드', '비씨카드', '우체국체크카드', '우체국'] },
+            // 신용카드번호: 업데이트됨 (이용 카드 등 공백 포함된 것들 제거, 매핑데이터 기준)
+            { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호', '이용카드', '카드명(카드번호뒤4자리)', '카드회원번호'] },
+            // 승인일자: 업데이트됨 (접수일자 추가)
+            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자', '매출일', '이용일자', '이용일', '거래일자', '거래일', '승인일시', '승인일자', '승인일', '접수일자'] },
+            { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호', '사업자번호', '가맹점사업자번호'] },
+            { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명', '이용하신곳', '이용가맹점', '상호'] },
             { id: 'col7', label: '거래처유형', type: 'empty' },
             { id: 'col8', label: '공급가액', type: 'formula', formula: (r) => `=IF(L${r}="공제", ROUND(K${r}/1.1, 0), "")` },
             { id: 'col9', label: '세액', type: 'formula', formula: (r) => `=IF(L${r}="공제", K${r}-H${r}, "")` },
             { id: 'col10', label: '봉사료', type: 'fixed', value: '0' },
-            { id: 'col11', label: '합계금액', type: 'header', candidates: ['공급가액','승인금액','이용금액(원)','이용금액','매출금액(원)','매출금액'] }, 
+            { id: 'col11', label: '합계금액', type: 'header', candidates: ['공급가액', '승인금액', '이용금액(원)', '이용금액', '매출금액(원)', '매출금액'] },
             { id: 'col12', label: '부가세공제여부', type: 'formula', formula: (r) => `=IF(M${r}=57, "공제", "불공제")` },
             { id: 'col13', label: '부가세유형(2자리)', type: 'fixed', value: '57' },
             { id: 'col14', label: '계정과목', type: 'empty' },
@@ -429,47 +528,83 @@
             { id: 'col24', label: '프로젝트코드(4자리이내)', type: 'empty' },
             { id: 'col25', label: '의제.재활용적요번호(차변)', type: 'empty' }
         ];
-        
-        uploadBox.addEventListener('click', function() {
+
+        let mappingRules = loadMappingRules();
+
+        function loadMappingRules() {
+            const saved = localStorage.getItem('csvMappingRules');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    return defaultMappingRules.map((rule, i) => {
+                        const savedRule = parsed.find(p => p.id === rule.id);
+                        if (savedRule) {
+                            return { ...rule, candidates: savedRule.candidates, value: savedRule.value };
+                        }
+                        return rule;
+                    });
+                } catch (e) {
+                    console.error('설정 로드 실패:', e);
+                    return JSON.parse(JSON.stringify(defaultMappingRules));
+                }
+            }
+            return defaultMappingRules.map(r => ({ ...r }));
+        }
+
+        function saveMappingRules() {
+            const dataToSave = mappingRules.map(r => ({
+                id: r.id,
+                candidates: r.candidates,
+                value: r.value
+            }));
+            localStorage.setItem('csvMappingRules', JSON.stringify(dataToSave));
+        }
+
+        uploadBox.addEventListener('click', function () {
             fileInput.click();
         });
-        
-        uploadBox.addEventListener('dragover', function(e) {
+
+        uploadBox.addEventListener('dragover', function (e) {
             e.preventDefault();
             uploadBox.classList.add('dragover');
         });
-        
-        uploadBox.addEventListener('dragleave', function() {
+
+        uploadBox.addEventListener('dragleave', function () {
             uploadBox.classList.remove('dragover');
         });
-        
-        uploadBox.addEventListener('drop', function(e) {
+
+        uploadBox.addEventListener('drop', function (e) {
             e.preventDefault();
             uploadBox.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (file && (file.name.endsWith('.csv') || file.name.endsWith('.CSV'))) {
+            // 파일 확장자 체크 (.csv, .tsv, .txt)
+            if (file && (file.name.endsWith('.csv') || file.name.endsWith('.CSV') || file.name.endsWith('.tsv') || file.name.endsWith('.TSV') || file.name.endsWith('.txt'))) {
                 handleFile(file);
+            } else {
+                showErrorModal('파일 형식 오류', 'CSV 또는 TSV 파일만 지원합니다.');
             }
         });
-        
-        fileInput.addEventListener('change', function(e) {
+
+        fileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (file) {
                 handleFile(file);
             }
         });
-        
+
         addColumnBtn.addEventListener('click', addColumn);
-        downloadBtn.addEventListener('click', downloadCSV);
+        downloadBtn.addEventListener('click', downloadData);
         copyBtn.addEventListener('click', copyToClipboard);
-        
+        copyNoHeaderBtn.addEventListener('click', copyNoHeaderToClipboard);
+
         creditCardBtn.addEventListener('click', processCreditCardPurchaseData);
-        
-        pasteBox.addEventListener('click', function() {
+
+        pasteBox.addEventListener('click', function () {
             showPasteModal();
         });
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
+        editMappingBtn.addEventListener('click', showMappingEditModal);
 
         function saveState() {
             const state = {
@@ -477,49 +612,48 @@
                 csvData: JSON.parse(JSON.stringify(csvData)),
                 currentFormat: currentFormat
             };
-            
+
             history = history.slice(0, historyIndex + 1);
             history.push(state);
             historyIndex++;
-            
+
             if (history.length > 50) {
                 history.shift();
                 historyIndex--;
             }
-            
+
             updateUndoRedoButtons();
         }
-        
+
         function undo() {
             if (historyIndex > 0) {
                 historyIndex--;
                 restoreState(history[historyIndex]);
             }
         }
-        
+
         function redo() {
             if (historyIndex < history.length - 1) {
                 historyIndex++;
                 restoreState(history[historyIndex]);
             }
         }
-        
+
         function restoreState(state) {
             headers = JSON.parse(JSON.stringify(state.headers));
             csvData = JSON.parse(JSON.stringify(state.csvData));
             currentFormat = state.currentFormat;
-            
+
             renderTable();
             updateStats();
             updateUndoRedoButtons();
         }
-        
+
         function updateUndoRedoButtons() {
             undoBtn.disabled = historyIndex <= 0;
             redoBtn.disabled = historyIndex >= history.length - 1;
         }
-        
-        // [공통] 데이터 로드 함수
+
         function processLoadedData(results, sourceName) {
             if (results.data.length > 0) {
                 headers = results.meta.fields;
@@ -527,15 +661,15 @@
                 history = [];
                 historyIndex = -1;
                 currentFormat = '원본';
-                
+
                 saveState();
                 renderTable();
                 controls.classList.add('active');
                 tableContainer.classList.add('active');
                 stats.classList.add('active');
                 updateStats();
-                
-                console.log(`${sourceName} 로드 완료 (헤더 공백 제거됨)`);
+
+                console.log(`${sourceName} 로드 완료. 감지된 구분자: ${results.meta.delimiter}`);
             } else {
                 showErrorModal('데이터 오류', '유효한 데이터가 없습니다.');
             }
@@ -546,50 +680,52 @@
                 header: true,
                 dynamicTyping: false,
                 skipEmptyLines: true,
-                transformHeader: function(header) {
+                transformHeader: function (header) {
                     if (typeof header === 'string') {
                         return header.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
                     }
                     return header;
                 },
-                complete: function(results) {
+                complete: function (results) {
                     processLoadedData(results, '파일');
                 },
-                error: function(error) {
-                    showErrorModal('CSV 파일 읽기 오류', error.message);
+                error: function (error) {
+                    showErrorModal('파일 읽기 오류', error.message);
                 }
             });
         }
 
         function processPastedData(text) {
             Papa.parse(text, {
-                delimiter: ',',
                 header: true,
                 dynamicTyping: false,
                 skipEmptyLines: true,
-                transformHeader: function(header) {
+                transformHeader: function (header) {
                     if (typeof header === 'string') {
                         return header.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
                     }
                     return header;
                 },
-                complete: function(results) {
+                complete: function (results) {
                     processLoadedData(results, '붙여넣기');
                 },
-                error: function(error) {
+                error: function (error) {
                     showErrorModal('데이터 파싱 오류', error.message);
                 }
             });
         }
-        
+
         function renderTable() {
             const table = document.getElementById('dataTable');
             let html = '<thead><tr>';
+            html += '<th class="row-action">삭제</th>';
             html += '<th class="row-number">#</th>';
             for (let i = 0; i < headers.length; i++) {
                 const header = headers[i];
                 html += '<th><div class="column-header">';
-                html += '<div class="column-header-text">' + header + '</div>';
+                html += `<div class="column-header-text" contenteditable="true" 
+                    onblur="handleHeaderEdit(this, ${i})" 
+                    onkeydown="handleHeaderKeydown(event, this)">${header}</div>`;
                 html += '<div class="column-controls">';
                 if (i > 0) html += '<button class="col-btn move-left" data-index="' + i + '">←</button>';
                 if (i < headers.length - 1) html += '<button class="col-btn move-right" data-index="' + i + '">→</button>';
@@ -600,6 +736,7 @@
             for (let i = 0; i < csvData.length; i++) {
                 const row = csvData[i];
                 html += '<tr>';
+                html += `<td class="row-action"><button class="row-del-btn" onclick="deleteRow(${i})" title="행 삭제">🗑️</button></td>`;
                 html += '<td class="row-number">' + (i + 1) + '</td>';
                 for (let j = 0; j < headers.length; j++) {
                     const header = headers[j];
@@ -613,6 +750,51 @@
             attachTableEvents();
         }
 
+        function handleHeaderEdit(element, index) {
+            const newHeader = element.textContent.trim();
+            const oldHeader = headers[index];
+
+            if (newHeader === oldHeader) return;
+
+            if (!newHeader) {
+                showErrorModal('오류', '열 이름은 비워둘 수 없습니다.');
+                element.textContent = oldHeader;
+                return;
+            }
+
+            if (headers.includes(newHeader)) {
+                showErrorModal('오류', '이미 존재하는 열 이름입니다.');
+                element.textContent = oldHeader;
+                return;
+            }
+
+            headers[index] = newHeader;
+
+            for (let i = 0; i < csvData.length; i++) {
+                const row = csvData[i];
+                row[newHeader] = row[oldHeader];
+                delete row[oldHeader];
+            }
+
+            saveState();
+            renderTable();
+            updateStats();
+        }
+
+        function handleHeaderKeydown(e, element) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                element.blur();
+            }
+        }
+
+        function deleteRow(index) {
+            csvData.splice(index, 1);
+            saveState();
+            renderTable();
+            updateStats();
+        }
+
         function handleCellEdit(element, rowIndex, headerName) {
             const newValue = element.textContent;
             if (csvData[rowIndex][headerName] !== newValue) {
@@ -620,25 +802,25 @@
                 saveState();
             }
         }
-        
+
         function attachTableEvents() {
             document.querySelectorAll('.delete-col').forEach(btn => {
-                btn.addEventListener('click', function(e) {
+                btn.addEventListener('click', function (e) {
                     deleteColumn(parseInt(this.getAttribute('data-index')));
                 });
             });
             document.querySelectorAll('.move-left').forEach(btn => {
-                btn.addEventListener('click', function(e) {
+                btn.addEventListener('click', function (e) {
                     moveColumn(parseInt(this.getAttribute('data-index')), -1);
                 });
             });
             document.querySelectorAll('.move-right').forEach(btn => {
-                btn.addEventListener('click', function(e) {
+                btn.addEventListener('click', function (e) {
                     moveColumn(parseInt(this.getAttribute('data-index')), 1);
                 });
             });
         }
-        
+
         function addColumn() {
             const newName = document.getElementById('newColumnName').value.trim();
             if (!newName) return showErrorModal('오류', '열 이름을 입력하세요.');
@@ -652,7 +834,7 @@
             updateStats();
             document.getElementById('newColumnName').value = '';
         }
-        
+
         function deleteColumn(index) {
             const columnName = headers[index];
             headers.splice(index, 1);
@@ -663,7 +845,7 @@
             renderTable();
             updateStats();
         }
-        
+
         function moveColumn(index, direction) {
             const newIndex = index + direction;
             if (newIndex < 0 || newIndex >= headers.length) return;
@@ -673,38 +855,93 @@
             saveState();
             renderTable();
         }
-        
-        function downloadCSV() {
+
+        function downloadData() {
             const now = new Date();
-            const dateStr = now.toISOString().slice(0,10);
+            const dateStr = now.toISOString().slice(0, 10);
             let cardName = currentFormat === '신용카드매입자료' ? '신용카드매입자료' : '데이터';
-            const fileName = `${dateStr}_${cardName}.csv`;
             
-            const csv = Papa.unparse({ fields: headers, data: csvData });
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const format = document.querySelector('input[name="outputFormat"]:checked').value;
+            const delimiter = format === 'tsv' ? '\t' : ',';
+            const extension = format === 'tsv' ? 'tsv' : 'csv';
+            
+            const fileName = `${dateStr}_${cardName}.${extension}`;
+
+            const dataStr = Papa.unparse({ fields: headers, data: csvData }, { delimiter: delimiter });
+            
+            const blob = new Blob(['\uFEFF' + dataStr], { type: 'text/plain;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = fileName;
             link.click();
         }
-        
+
         function copyToClipboard() {
-            const csv = Papa.unparse({ fields: headers, data: csvData });
+            const format = document.querySelector('input[name="outputFormat"]:checked').value;
+            const delimiter = format === 'tsv' ? '\t' : ',';
+
+            const dataStr = Papa.unparse({ fields: headers, data: csvData }, { delimiter: delimiter });
+            
+            copyTextToClipboard(dataStr, format);
+        }
+
+        // [신규] 헤더 제거 복사 함수 및 수식 행 번호 조정
+        function copyNoHeaderToClipboard() {
+            const format = document.querySelector('input[name="outputFormat"]:checked').value;
+            const delimiter = format === 'tsv' ? '\t' : ',';
+
+            // 데이터 복사본 생성 및 수식 행 번호 조정 (10행 기준)
+            const modifiedData = csvData.map((row, index) => {
+                const newRow = { ...row };
+                const currentFileRow = index + 2; // 현재 파일에서의 행 번호 (헤더가 1행이므로 데이터는 2행부터)
+                const targetStartRow = 10; // 목표 시작 행 번호
+
+                for (let key in newRow) {
+                    let value = newRow[key];
+                    // 값이 문자열이고 '='로 시작하는 수식인 경우
+                    if (typeof value === 'string' && value.startsWith('=')) {
+                        // 정규식으로 셀 참조(알파벳+숫자)를 찾아서 행 번호 변경
+                        // 현재 파일에서의 행 번호(currentFileRow)와 일치하는 숫자만 10행 기준으로 변경
+                        newRow[key] = value.replace(/([A-Z]+)([0-9]+)/g, (match, col, rowStr) => {
+                            const rowNum = parseInt(rowStr);
+                            if (rowNum === currentFileRow) {
+                                return `${col}${targetStartRow + index}`;
+                            }
+                            return match;
+                        });
+                    }
+                }
+                return newRow;
+            });
+
+            // header: false 옵션으로 헤더 제외
+            const dataStr = Papa.unparse(modifiedData, { 
+                delimiter: delimiter,
+                header: false 
+            });
+            
+            copyTextToClipboard(dataStr, format + " (헤더제거)");
+        }
+
+        // 복사 로직 공통화
+        function copyTextToClipboard(text, label) {
             const textArea = document.createElement('textarea');
-            textArea.value = csv;
+            textArea.value = text;
             document.body.appendChild(textArea);
             textArea.select();
             try {
                 document.execCommand('copy');
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = '✅ 완료!';
-                setTimeout(() => copyBtn.textContent = originalText, 2000);
+                // 버튼 텍스트 변경을 위해 조건 처리
+                const btn = label.includes('헤더제거') ? copyNoHeaderBtn : copyBtn;
+                const originalText = btn.textContent;
+                btn.textContent = `✅ ${label.toUpperCase()} 완료!`;
+                setTimeout(() => btn.textContent = originalText, 2000);
             } catch (err) {
                 showErrorModal('오류', '복사 실패');
             }
             document.body.removeChild(textArea);
         }
-        
+
         function updateStats() {
             stats.innerHTML = `<strong>통계:</strong> 총 ${csvData.length}개 행 | ${headers.length}개 열`;
         }
@@ -715,41 +952,120 @@
             modal.innerHTML = `<div style="background:white;padding:30px;border-radius:12px;max-width:400px;text-align:center;"><h2 style="color:#dc3545;margin-bottom:15px;">⚠️ ${title}</h2><p>${message}</p><button onclick="this.parentElement.parentElement.remove()" style="padding:10px 20px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">확인</button></div>`;
             document.body.appendChild(modal);
         }
-        
+
         function showPasteModal() {
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
-            modal.innerHTML = `<div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:600px;"><h2>데이터 붙여넣기</h2><p style="color:#666;margin:10px 0;">CSV 데이터를 붙여넣으세요.</p><textarea id="pasteArea" style="width:100%;height:300px;padding:10px;border:2px solid #dee2e6;border-radius:6px;"></textarea><div style="margin-top:20px;text-align:right;"><button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">취소</button><button id="confirmPaste" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">확인</button></div></div>`;
+            modal.innerHTML = `<div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:600px;"><h2>데이터 붙여넣기</h2><p style="color:#666;margin:10px 0;">CSV 또는 엑셀(탭 구분) 데이터를 붙여넣으세요.</p><textarea id="pasteArea" style="width:100%;height:300px;padding:10px;border:2px solid #dee2e6;border-radius:6px;"></textarea><div style="margin-top:20px;text-align:right;"><button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">취소</button><button id="confirmPaste" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">확인</button></div></div>`;
             document.body.appendChild(modal);
             const pasteArea = document.getElementById('pasteArea');
             pasteArea.focus();
-            
+
             document.getElementById('confirmPaste').onclick = () => {
                 const text = pasteArea.value;
-                if(text.trim()) { processPastedData(text); modal.remove(); }
+                if (text.trim()) { processPastedData(text); modal.remove(); }
             };
         }
-        
-        // [통합 매핑 함수]
+
+        function showMappingEditModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
+
+            let rowsHtml = mappingRules.map((rule, index) => {
+                let inputHtml = '';
+                if (rule.type === 'header' || rule.type === 'card_name') {
+                    inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="candidates" value="${rule.candidates ? rule.candidates.join(',') : ''}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">
+                    <div style="font-size:11px;color:#888;margin-top:2px;">${rule.type === 'card_name' ? '감지할 카드사명을 쉼표(,)로 구분하여 입력' : '쉼표(,)로 구분하여 입력'}</div>`;
+                } else if (rule.type === 'fixed') {
+                    inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="value" value="${rule.value}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">`;
+                } else {
+                    inputHtml = `<span style="color:#999;font-size:12px;">(자동 계산/고정 로직)</span>`;
+                }
+
+                return `
+                    <div style="display:flex;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:10px;">
+                        <div style="width:180px;font-weight:bold;font-size:13px;padding-top:6px;">${rule.label}</div>
+                        <div style="flex:1;">${inputHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            modal.innerHTML = `
+                <div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:800px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+                    <h2 style="margin-bottom:5px;">매핑 구성요소 편집</h2>
+                    <p style="color:#666;font-size:13px;margin-bottom:20px;">신용카드매입자료 변환 시 사용할 규칙을 설정합니다.</p>
+                    <div style="overflow-y:auto;flex:1;padding-right:10px;">
+                        ${rowsHtml}
+                    </div>
+                    <div style="margin-top:20px;display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #eee;">
+                        <button class="btn-reset" style="padding:8px 20px;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;">초기화</button>
+                        <div>
+                            <button class="btn-close" style="padding:8px 20px;background:#6c757d;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">취소</button>
+                            <button class="btn-save" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">저장</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            modal.querySelector('.btn-close').onclick = () => modal.remove();
+
+            modal.querySelector('.btn-reset').onclick = () => {
+                if (confirm('모든 매핑 설정을 초기값으로 되돌리시겠습니까?')) {
+                    localStorage.removeItem('csvMappingRules');
+                    mappingRules = defaultMappingRules.map(r => ({ ...r }));
+                    modal.remove();
+                    showMappingEditModal();
+
+                    const toast = document.createElement('div');
+                    toast.textContent = '🔄 설정이 초기화되었습니다.';
+                    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:2000;animation:fadeInOut 2s forwards;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                }
+            };
+
+            modal.querySelector('.btn-save').onclick = () => {
+                const inputs = modal.querySelectorAll('.mapping-input');
+                inputs.forEach(input => {
+                    const index = input.dataset.index;
+                    const key = input.dataset.key;
+                    const val = input.value;
+
+                    if (key === 'candidates') {
+                        mappingRules[index].candidates = val.split(',').map(s => s.trim()).filter(s => s);
+                    } else if (key === 'value') {
+                        mappingRules[index].value = val;
+                    }
+                });
+                saveMappingRules(); // 저장 함수 호출
+                modal.remove();
+                // 간단한 토스트 메시지
+                const toast = document.createElement('div');
+                toast.textContent = '✅ 매핑 규칙이 저장되었습니다.';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:2000;animation:fadeInOut 2s forwards;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            };
+        }
+
         function processCreditCardPurchaseData() {
             const newHeaders = mappingRules.map(r => r.label);
-            
-            // [신규] 1. 마지막 행에서 카드사명 감지 (매핑데이터.csv 파일 기준 목록)
-            const knownCardNames = ['BNK경남은행','KB국민카드','NH농협카드','롯데카드','삼성카드','신한카드','현대카드','하나카드','기업비씨카드','비씨카드'];
+            const cardNameRule = mappingRules.find(r => r.type === 'card_name');
+            const knownCardNames = cardNameRule ? cardNameRule.candidates : [];
+
             let detectedCardName = '';
             let dataToMap = csvData;
 
             if (csvData.length > 0) {
-                // 마지막 행 가져오기
                 const lastRow = csvData[csvData.length - 1];
-                const lastRowValues = Object.values(lastRow).map(v => String(v).replace(/\s/g, '')); // 비교를 위해 공백 제거
-                
+                const lastRowValues = Object.values(lastRow).map(v => String(v).replace(/\s/g, ''));
+
                 for (const name of knownCardNames) {
                     const cleanName = name.replace(/\s/g, '');
-                    // 마지막 행의 값 중 하나라도 카드사 이름을 포함하면 감지
                     if (lastRowValues.some(v => v.includes(cleanName))) {
                         detectedCardName = name;
-                        // 마지막 행은 데이터가 아니므로 제거하고 매핑 시작
                         dataToMap = csvData.slice(0, -1);
                         console.log(`마지막 행에서 카드사 감지됨: ${name}. 마지막 행 제거 후 매핑 진행.`);
                         break;
@@ -757,7 +1073,6 @@
                 }
             }
 
-            // 2. 공백이 제거된 키로 값 찾기
             function findValue(row, candidates) {
                 for (let c of candidates) {
                     const key = c.replace(/[\uFEFF\s\u00A0\u200B]/g, '');
@@ -774,7 +1089,7 @@
                 newData = dataToMap.map((row, i) => {
                     const rowNum = i + 2;
                     const mappedRow = {};
-                    
+
                     mappingRules.forEach(rule => {
                         if (rule.type === 'fixed') {
                             mappedRow[rule.label] = rule.value;
@@ -790,14 +1105,14 @@
                     });
                     return mappedRow;
                 });
-                
+
                 headers = newHeaders;
                 csvData = newData;
             } else {
                 headers = newHeaders;
                 csvData = [];
             }
-            
+
             currentFormat = '신용카드매입자료';
             saveState();
             renderTable();
@@ -805,4 +1120,5 @@
         }
     </script>
 </body>
+
 </html>
