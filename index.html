@@ -18,7 +18,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            padding-bottom: 20px; /* 패치노트 버튼 이동으로 여백 축소 */
+            padding-bottom: 20px;
         }
 
         .container {
@@ -35,11 +35,13 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative; /* 파일 이름 절대 위치 기준 */
         }
 
         .header h1 {
             font-size: 32px;
             margin-bottom: 10px;
+            margin-top: 20px; /* 파일 이름과 겹치지 않게 여백 추가 */
         }
 
         .header p {
@@ -47,7 +49,125 @@
             font-size: 14px;
         }
 
-        /* 헤더 버튼 래퍼 추가 */
+        /* 파일 이름 및 히스토리 컨테이너 (좌측 상단 이동) */
+        .file-history-container {
+            position: absolute;
+            top: 15px; /* 20px -> 15px로 이동 */
+            left: 20px;
+            z-index: 100;
+            text-align: left;
+        }
+
+        .file-name-display {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: none; /* 초기에는 숨김 */
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .file-name-display:hover {
+            background: rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .file-name-display.active {
+            display: inline-flex;
+        }
+
+        .file-name-text {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .file-name-display.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        /* 드롭다운 메뉴 스타일 */
+        .history-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 250px;
+            display: none;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+
+        .history-dropdown.show {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        .history-icon {
+            font-size: 14px;
+        }
+
+        .history-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-header {
+            padding: 8px 15px;
+            background: #f8f9fa;
+            color: #888;
+            font-size: 11px;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* 헤더 버튼 래퍼 */
         .header-btn-wrapper {
             position: relative;
             display: flex;
@@ -465,6 +585,12 @@
             .patch-note-btn:hover {
                 transform: translateY(-2px);
             }
+            .file-history-container {
+                position: static;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: center;
+            }
         }
 
         /* 패치노트 리스트 스타일 */
@@ -508,13 +634,34 @@
             left: 0;
             color: #999;
         }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 CSV/TSV 데이터 편집 도구</h1>
+            <!-- 파일 이름 및 히스토리 영역 (좌측 상단으로 이동) -->
+            <div class="file-history-container">
+                <div id="fileNameDisplay" class="file-name-display">
+                    <span class="history-icon">📄</span>
+                    <span class="file-name-text" id="currentFileName">파일 없음</span>
+                    <span class="dropdown-arrow">▼</span>
+                </div>
+                <!-- 드롭다운 메뉴 -->
+                <div id="historyDropdown" class="history-dropdown">
+                    <div class="history-header">최근 열어본 파일 (최대 10개)</div>
+                    <ul id="historyList" class="history-list">
+                        <!-- JS로 채움 -->
+                    </ul>
+                </div>
+            </div>
+
+            <h1>CSV/TSV 데이터 편집 도구</h1>
             <p>CSV 또는 TSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
             
             <div class="header-btn-wrapper">
@@ -600,8 +747,21 @@
         const copyNoHeaderBtn = document.getElementById('copyNoHeaderBtn');
         const editMappingBtn = document.getElementById('editMappingBtn');
         const patchNoteBtn = document.getElementById('patchNoteBtn');
+        
+        // 파일 히스토리 관련 요소
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const currentFileName = document.getElementById('currentFileName');
+        const historyDropdown = document.getElementById('historyDropdown');
+        const historyList = document.getElementById('historyList');
 
         const patchNotesData = [
+            {
+                version: 'v1.6',
+                date: '2025-12-04',
+                content: [
+                    '파일이름 기능 생성'
+                ]
+            },
             {
                 version: 'v1.5',
                 date: '2024-05-24',
@@ -701,6 +861,80 @@
             }));
             localStorage.setItem('csvMappingRules', JSON.stringify(dataToSave));
         }
+
+        // --- 히스토리 관리 로직 시작 ---
+        function getFileHistory() {
+            const history = localStorage.getItem('csvFileHistory');
+            return history ? JSON.parse(history) : [];
+        }
+
+        function addFileToHistory(fileName) {
+            let history = getFileHistory();
+            // 중복 제거
+            history = history.filter(name => name !== fileName);
+            // 최신 항목을 앞에 추가
+            history.unshift(fileName);
+            // 10개 제한
+            if (history.length > 10) {
+                history = history.slice(0, 10);
+            }
+            localStorage.setItem('csvFileHistory', JSON.stringify(history));
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const history = getFileHistory();
+            historyList.innerHTML = '';
+            
+            if (history.length === 0) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'history-item';
+                emptyItem.style.color = '#999';
+                emptyItem.style.justifyContent = 'center';
+                emptyItem.textContent = '최근 기록 없음';
+                historyList.appendChild(emptyItem);
+                return;
+            }
+
+            history.forEach(name => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.innerHTML = `<span class="history-icon">📄</span><span class="history-text">${name}</span>`;
+                li.onclick = () => {
+                    // 히스토리 아이템 클릭 시
+                    // 보안상 로컬 파일을 자동으로 다시 열 수는 없으므로 이름만 업데이트하거나 알림 표시
+                    // 여기서는 단순히 이름을 표시하는 것으로 처리
+                    currentFileName.textContent = name;
+                    fileNameDisplay.classList.add('active');
+                    historyDropdown.classList.remove('show');
+                    fileNameDisplay.classList.remove('open');
+                };
+                historyList.appendChild(li);
+            });
+        }
+
+        // 드롭다운 토글
+        fileNameDisplay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = historyDropdown.classList.contains('show');
+            if (isOpen) {
+                historyDropdown.classList.remove('show');
+                fileNameDisplay.classList.remove('open');
+            } else {
+                renderHistoryList();
+                historyDropdown.classList.add('show');
+                fileNameDisplay.classList.add('open');
+            }
+        });
+
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('click', (e) => {
+            if (!fileNameDisplay.contains(e.target) && !historyDropdown.contains(e.target)) {
+                historyDropdown.classList.remove('show');
+                fileNameDisplay.classList.remove('open');
+            }
+        });
+        // --- 히스토리 관리 로직 끝 ---
 
         uploadBox.addEventListener('click', function () {
             fileInput.click();
@@ -838,6 +1072,29 @@
                 history = [];
                 historyIndex = -1;
                 currentFormat = '원본';
+
+                // 파일 이름 추출 로직 (마지막 행, 두 번째 열)
+                try {
+                    if (headers.length >= 2) {
+                        const lastRow = csvData[csvData.length - 1];
+                        const secondColumnName = headers[1];
+                        const extractedFileName = lastRow[secondColumnName];
+                        
+                        if (extractedFileName) {
+                            currentFileName.textContent = extractedFileName;
+                            fileNameDisplay.classList.add('active');
+                            fileNameDisplay.title = extractedFileName;
+                            
+                            // 히스토리에 추가
+                            addFileToHistory(extractedFileName);
+                        } else {
+                            fileNameDisplay.classList.remove('active');
+                        }
+                    }
+                } catch (e) {
+                    console.error('파일 이름 추출 실패:', e);
+                    fileNameDisplay.classList.remove('active');
+                }
 
                 saveState();
                 renderTable();

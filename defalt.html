@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
     <script>
         // PDF.js 워커 설정
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -19,7 +18,6 @@
                         primary: '#3B82F6',
                         secondary: '#1E40AF',
                         ai: '#8B5CF6',
-                        csv: '#10B981', // CSV 버튼용 초록색
                     }
                 }
             }
@@ -76,14 +74,9 @@
                     <span class="text-xs text-slate-500 font-medium">Auto Image Preview & Gemini OCR</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <button id="btn-settings" class="text-sm text-slate-500 hover:text-primary transition-colors">
-                    <i class="fas fa-cog mr-1"></i> 설정
-                </button>
-                <a href="#" onclick="window.location.reload()" class="text-sm text-slate-500 hover:text-primary transition-colors">
-                    <i class="fas fa-redo mr-1"></i> 초기화
-                </a>
-            </div>
+            <a href="#" onclick="window.location.reload()" class="text-sm text-slate-500 hover:text-primary transition-colors">
+                <i class="fas fa-redo mr-1"></i> 초기화
+            </a>
         </div>
     </header>
 
@@ -157,19 +150,14 @@
                             </div>
                             <p id="status-text" class="text-xs text-slate-500 font-medium">대기 중...</p>
 
-                            <!-- 변환 버튼 그룹 -->
-                            <div class="flex gap-2 mt-4 z-20 relative">
-                                <button id="btn-start-ocr" class="hidden flex-1 py-3 px-2 bg-primary text-white rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 font-bold shadow-md text-sm">
-                                    <i class="fas fa-align-left"></i> 텍스트 추출
-                                </button>
-                                <button id="btn-start-csv" class="hidden flex-1 py-3 px-2 bg-csv text-white rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2 font-bold shadow-md text-sm">
-                                    <i class="fas fa-file-csv"></i> CSV 추출
-                                </button>
-                            </div>
+                            <!-- 변환 시작 버튼 -->
+                            <button id="btn-start-ocr" class="hidden w-full mt-4 py-3 px-4 bg-primary text-white rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 font-bold shadow-md animate-bounce z-20 relative">
+                                <i class="fas fa-comment-alt"></i> 텍스트 추출 시작
+                            </button>
                         </div>
                     </div>
                     <div id="ocr-warning" class="mt-3 bg-purple-50 text-purple-700 p-3 rounded-lg text-xs border border-purple-200">
-                        <i class="fas fa-info-circle mr-1"></i> <strong>알림:</strong> 이미지는 자동 변환됩니다. 텍스트나 표 데이터 추출이 필요하면 위 버튼을 누르세요.
+                        <i class="fas fa-info-circle mr-1"></i> <strong>알림:</strong> 이미지는 자동으로 변환됩니다. 텍스트 추출이 필요하면 [시작] 버튼을 누르세요.
                     </div>
                 </div>
 
@@ -180,10 +168,10 @@
                     </h2>
                     <div class="flex flex-col gap-3">
                         <button id="btn-copy" class="w-full py-3 px-4 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 font-medium shadow-md active:scale-95 transform transition-transform">
-                            <i class="fas fa-copy"></i> 복사
+                            <i class="fas fa-copy"></i> 텍스트 복사
                         </button>
                         <button id="btn-download" class="w-full py-3 px-4 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-primary hover:border-primary transition-all flex items-center justify-center gap-2 font-medium">
-                            <i class="fas fa-download"></i> 파일로 저장
+                            <i class="fas fa-download"></i> .txt 파일로 저장
                         </button>
                     </div>
                 </div>
@@ -195,7 +183,7 @@
                     <!-- 탭 헤더 -->
                     <div class="absolute top-0 left-0 w-full bg-slate-50 border-b border-slate-200 px-4 flex items-center z-10 rounded-t-2xl">
                         <button id="tab-text" class="px-4 py-3 text-sm font-medium transition-colors tab-inactive flex items-center gap-2">
-                            <i class="fas fa-align-left"></i> 결과 보기
+                            <i class="fas fa-align-left"></i> 텍스트 보기
                         </button>
                         <button id="tab-image" class="px-4 py-3 text-sm font-medium transition-colors tab-active flex items-center gap-2">
                             <i class="fas fa-images"></i> 이미지 보기
@@ -207,7 +195,7 @@
 
                     <!-- 텍스트 뷰 (기본 숨김) -->
                     <div id="view-text" class="w-full h-full pt-12 p-6 overflow-hidden hidden">
-                        <textarea id="result-text" class="w-full h-full resize-none outline-none text-base leading-relaxed text-slate-700 font-mono bg-white rounded-xl" placeholder="왼쪽에서 추출 버튼을 누르면 결과가 여기에 표시됩니다..." readonly></textarea>
+                        <textarea id="result-text" class="w-full h-full resize-none outline-none text-base leading-relaxed text-slate-700 font-mono bg-white rounded-xl" placeholder="[텍스트 추출 시작] 버튼을 누르면 AI가 분석한 내용이 여기에 표시됩니다..." readonly></textarea>
                     </div>
 
                     <!-- 이미지 뷰 (기본 표시) -->
@@ -228,58 +216,14 @@
     <!-- 보이지 않는 캔버스 (OCR용) -->
     <canvas id="ocr-canvas" class="hidden"></canvas>
 
-    <!-- 설정 모달 -->
-    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
-                <i class="fas fa-cog text-primary"></i> API 설정
-            </h3>
-            
-            <div class="mb-6">
-                <h4 class="font-bold text-sm text-slate-800 mb-2 border-b pb-1">Gemini API (OCR용)</h4>
-                
-                <label class="block text-xs text-slate-600 mb-1">API Key</label>
-                <input type="text" id="input-api-key" class="w-full p-2 border border-slate-300 rounded text-sm mb-3" placeholder="YOUR_GEMINI_API_KEY_HERE">
-                
-                <label class="block text-xs text-slate-600 mb-1">사용할 AI 모델</label>
-                <select id="input-model-select" class="w-full p-2 border border-slate-300 rounded text-sm mb-3 bg-white">
-                    <option value="gemini-2.5-flash-preview-09-2025">Gemini 2.5 Flash Preview (권장 / 안정)</option>
-                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
-                    <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro (Experimental)</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                </select>
-
-                <!-- CSV 규칙 입력란 추가 -->
-                <label class="block text-xs text-slate-600 mb-1">CSV 추출 규칙 (프롬프트 설정)</label>
-                <textarea id="input-csv-rule" class="w-full p-2 border border-slate-300 rounded text-xs mb-1 h-24 bg-white resize-none" placeholder="예: 첫 번째 열은 날짜, 두 번째 열은 금액으로 추출해줘."></textarea>
-                <p class="text-[10px] text-slate-400">※ CSV 버튼 클릭 시 이 규칙을 바탕으로 데이터를 추출합니다.</p>
-                
-                <p class="text-[10px] text-slate-400 mt-2"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="hover:text-primary">키 발급받기</a></p>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <button id="btn-close-settings" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors">닫기</button>
-                <button id="btn-save-settings" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors">저장</button>
-            </div>
-        </div>
-    </div>
-
     <!-- 토스트 메시지 -->
-    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 translate-y-20 opacity-0 transition-all duration-300 z-50">
-        <div class="bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3">
-            <i class="fas fa-check-circle text-green-400"></i>
-            <span id="toast-message">알림 메시지</span>
-        </div>
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fas fa-check text-green-400"></i>
+        <span id="toast-message">알림 메시지</span>
     </div>
 
     <script>
-        const DEFAULT_API_KEY = "AIzaSyD1Nw27d552mNllmkzAmDlKJlC865bSu00";
-        const DEFAULT_CSV_RULE = "Extract tables and structured data from this image into CSV format. Use comma as delimiter. Do not include markdown code blocks. Just raw CSV data. If there are multiple tables, separate them with a blank line.";
-        
-        let apiKey = localStorage.getItem('gemini_api_key') || DEFAULT_API_KEY;
-        let currentModel = localStorage.getItem('gemini_model') || "gemini-2.5-flash-preview-09-2025";
-        let csvRule = localStorage.getItem('gemini_csv_rule') || DEFAULT_CSV_RULE;
-        let currentOutputMode = 'text'; // 'text' or 'csv'
+        const apiKey = ""; // 런타임에 자동으로 설정됩니다.
 
         // DOM 요소
         const dropZone = document.getElementById('drop-zone');
@@ -298,21 +242,11 @@
         const ocrWarning = document.getElementById('ocr-warning');
         const ocrCanvas = document.getElementById('ocr-canvas');
         const btnStartOcr = document.getElementById('btn-start-ocr');
-        const btnStartCsv = document.getElementById('btn-start-csv'); 
         const rotationValueSpan = document.getElementById('rotation-value');
         const btnRotateLeft = document.getElementById('btn-rotate-left');
         const btnRotateRight = document.getElementById('btn-rotate-right');
-        
-        // 설정 UI
-        const btnSettings = document.getElementById('btn-settings');
-        const settingsModal = document.getElementById('settings-modal');
-        const btnCloseSettings = document.getElementById('btn-close-settings');
-        const btnSaveSettings = document.getElementById('btn-save-settings');
-        const inputApiKey = document.getElementById('input-api-key');
-        const inputModelSelect = document.getElementById('input-model-select');
-        const inputCsvRule = document.getElementById('input-csv-rule'); // CSV 규칙 입력란
 
-        // 탭 UI
+        // 탭 및 뷰 관련 요소
         const tabText = document.getElementById('tab-text');
         const tabImage = document.getElementById('tab-image');
         const viewText = document.getElementById('view-text');
@@ -321,57 +255,24 @@
         const imageGallery = document.getElementById('image-gallery');
 
         let currentFile = null;
-        let globalRotation = 0; 
+        let globalRotation = 0; // 문서 회전 각도 상태
 
+        // 지연 유틸리티 함수 (Promise)
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-        // 설정 모달 제어
-        btnSettings.addEventListener('click', () => {
-            inputApiKey.value = apiKey;
-            inputModelSelect.value = currentModel; 
-            inputCsvRule.value = csvRule; // 저장된 규칙 불러오기
-            settingsModal.classList.remove('hidden');
-        });
-
-        btnCloseSettings.addEventListener('click', () => {
-            settingsModal.classList.add('hidden');
-        });
-
-        settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) {
-                settingsModal.classList.add('hidden');
-            }
-        });
-
-        btnSaveSettings.addEventListener('click', () => {
-            const newKey = inputApiKey.value.trim();
-            if (!newKey) {
-                showToast('API 키를 입력해주세요.', true);
-                return;
-            }
-            apiKey = newKey;
-            currentModel = inputModelSelect.value;
-            csvRule = inputCsvRule.value.trim() || DEFAULT_CSV_RULE; // 빈 값이면 기본값 사용
-
-            localStorage.setItem('gemini_api_key', apiKey);
-            localStorage.setItem('gemini_model', currentModel);
-            localStorage.setItem('gemini_csv_rule', csvRule);
-
-            settingsModal.classList.add('hidden');
-            showToast('설정이 저장되었습니다.');
-        });
-
-        // 문서 회전 함수
+        // 문서 회전 함수 (이벤트 버블링 방지 포함)
         window.rotateDocument = function(deg) {
             globalRotation = (globalRotation + deg) % 360;
             if (globalRotation < 0) globalRotation += 360;
             rotationValueSpan.textContent = `${globalRotation}°`;
             
+            // 회전 시 미리보기 재생성
             if (currentFile) {
                 generatePreviews(currentFile);
             }
         };
 
+        // 회전 버튼 클릭 시 업로드 창 뜨는 것 방지
         btnRotateLeft.addEventListener('click', (e) => {
             e.stopPropagation();
             rotateDocument(-90);
@@ -423,7 +324,7 @@
         });
 
         dropZone.addEventListener('drop', handleDrop, false);
-        dropZone.addEventListener('click', () => fileInput.click()); 
+        dropZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
         function handleDrop(e) {
@@ -438,17 +339,19 @@
             
             const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
             if (!validTypes.includes(file.type)) {
-                showToast('PDF 또는 이미지 파일만 가능합니다.', true);
+                showToast('PDF 또는 이미지 파일(JPG, PNG)만 가능합니다.', true);
                 return;
             }
 
             currentFile = file;
             
+            // 새 파일 로드 시 회전 초기화 (원하면 주석 처리 가능)
             if (globalRotation !== 0) {
                  globalRotation = 0;
                  rotationValueSpan.textContent = "0°";
             }
 
+            // UI 초기화
             uploadPlaceholder.classList.add('hidden');
             fileInfo.classList.remove('hidden');
             fileNameDisplay.textContent = file.name;
@@ -457,30 +360,22 @@
             
             resultText.value = '';
             actionButtons.classList.add('opacity-50', 'pointer-events-none');
+            btnStartOcr.classList.add('hidden');
             
-            // 버튼들 표시
-            btnStartOcr.classList.remove('hidden');
-            btnStartCsv.classList.remove('hidden');
-            
-            // 버튼 활성화
-            btnStartOcr.disabled = false;
-            btnStartCsv.disabled = false;
-            btnStartOcr.classList.remove('opacity-50');
-            btnStartCsv.classList.remove('opacity-50');
-            
-            btnStartOcr.innerHTML = '<i class="fas fa-align-left"></i> 텍스트 추출';
-            btnStartCsv.innerHTML = '<i class="fas fa-file-csv"></i> CSV 추출';
-
+            // 이미지 탭으로 자동 전환
             switchTab('image');
+            
+            // 즉시 미리보기 생성
             generatePreviews(file);
         }
 
+        // 1. 미리보기 생성 함수 (자동 실행)
         async function generatePreviews(file) {
             statusText.textContent = "이미지 변환 중...";
             statusText.classList.remove('text-green-600', 'font-bold', 'text-red-500');
             statusText.classList.add('text-slate-500');
             
-            imageGallery.innerHTML = '';
+            imageGallery.innerHTML = ''; // 갤러리 초기화
 
             try {
                 if (file.type === 'application/pdf') {
@@ -489,8 +384,13 @@
                     await previewImage(file);
                 }
                 
-                statusText.textContent = "이미지 변환 완료. 추출 방식을 선택하세요.";
+                statusText.textContent = "이미지 변환 완료. 텍스트 추출이 가능합니다.";
                 loadingBar.style.width = '100%';
+                
+                // OCR 시작 버튼 표시
+                btnStartOcr.classList.remove('hidden');
+                btnStartOcr.disabled = false;
+                btnStartOcr.innerHTML = '<i class="fas fa-comment-alt"></i> 텍스트 추출 시작';
                 
             } catch (error) {
                 console.error(error);
@@ -510,6 +410,7 @@
                         const canvas = ocrCanvas;
                         const ctx = canvas.getContext('2d');
                         
+                        // 회전 적용
                         if (globalRotation % 180 !== 0) {
                             canvas.width = tempImg.height;
                             canvas.height = tempImg.width;
@@ -544,10 +445,11 @@
             for (let i = 1; i <= totalPages; i++) {
                 const page = await pdf.getPage(i);
                 
+                // 회전 적용 렌더링
                 const rotation = (page.rotate + globalRotation) % 360;
-                const viewport = page.getViewport({ scale: 1.5, rotation: rotation });
+                const viewport = page.getViewport({ scale: 1.5, rotation: rotation }); // 미리보기는 1.5배율로 충분
 
-                const canvas = document.createElement('canvas'); 
+                const canvas = document.createElement('canvas'); // 별도 캔버스 사용
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 
@@ -559,6 +461,7 @@
                 const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
                 addImageToGallery(imageDataUrl, `Page ${i} (${rotation}°)`);
                 
+                // 로딩바 업데이트
                 const percent = (i / totalPages) * 100;
                 loadingBar.style.width = percent + '%';
             }
@@ -582,49 +485,30 @@
             imageGallery.appendChild(imgContainer);
         }
 
-        // 공통 추출 실행 함수
-        async function startExtraction(mode) {
+        // 2. 텍스트 추출 (OCR) 함수 - 버튼 클릭 시 실행
+        btnStartOcr.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (!currentFile) return;
 
-            if (!apiKey) {
-                showToast("API 키 설정이 필요합니다.", true);
-                settingsModal.classList.remove('hidden');
-                return;
-            }
-
-            // 버튼 상태 비활성화
             btnStartOcr.disabled = true;
-            btnStartCsv.disabled = true;
-            btnStartOcr.classList.add('opacity-50');
-            btnStartCsv.classList.add('opacity-50');
+            btnStartOcr.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 추출 중...';
             
-            currentOutputMode = mode; 
-            
+            // 텍스트 탭으로 전환
             switchTab('text');
-            const modeText = mode === 'csv' ? 'CSV 데이터' : '텍스트';
-            statusText.textContent = `AI가 ${modeText}를 추출하고 있습니다...`;
+            statusText.textContent = "AI가 텍스트를 분석하고 있습니다...";
             statusText.classList.add('animate-pulse');
 
             if (currentFile.type === 'application/pdf') {
-                await performOcrPDF(currentFile, mode);
+                performOcrPDF(currentFile);
             } else {
-                await performOcrImage(currentFile, mode);
+                performOcrImage(currentFile);
             }
-        }
-
-        btnStartOcr.addEventListener('click', (e) => {
-            e.stopPropagation();
-            startExtraction('text');
         });
 
-        btnStartCsv.addEventListener('click', (e) => {
-            e.stopPropagation();
-            startExtraction('csv');
-        });
-
-        async function performOcrImage(file, mode) {
+        async function performOcrImage(file) {
             loadingBar.style.width = '20%';
             
+            // 이미 갤러리에 회전된 이미지가 있지만, OCR용으로 다시 고화질 처리
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
@@ -633,7 +517,6 @@
                         const canvas = ocrCanvas;
                         const ctx = canvas.getContext('2d');
                         
-                        // 회전 적용
                         if (globalRotation % 180 !== 0) {
                             canvas.width = tempImg.height;
                             canvas.height = tempImg.width;
@@ -647,19 +530,8 @@
                         ctx.drawImage(tempImg, -tempImg.width / 2, -tempImg.height / 2);
                         
                         const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
-                        
-                        // 설정된 CSV 규칙 사용
-                        const prompt = mode === 'csv' 
-                            ? csvRule // 사용자가 설정한 규칙 적용
-                            : "Extract text directly.";
-                            
-                        let text = await recognizeImageWithGemini(base64Image, file.type, prompt);
-                        
-                        if (mode !== 'csv') {
-                            text = cleanText(text);
-                        } else {
-                            text = text.trim(); 
-                        }
+                        let text = await recognizeImageWithGemini(base64Image, file.type);
+                        text = cleanText(text);
 
                         resultText.value = text;
                         finishOcr();
@@ -672,7 +544,7 @@
             reader.readAsDataURL(file);
         }
 
-        async function performOcrPDF(file, mode) {
+        async function performOcrPDF(file) {
             const useOCR = ocrToggle.checked;
             
             try {
@@ -687,9 +559,11 @@
                     const page = await pdf.getPage(i);
                     let pageText = "";
 
+                    // 텍스트 추출
                     if (useOCR) {
-                        statusText.textContent = `AI 분석 중... (${i}/${totalPages} 페이지)`;
+                        statusText.textContent = `Gemini OCR 분석 중... (${i}/${totalPages} 페이지)`;
                         
+                        // OCR을 위해 고화질(2.0)로 다시 렌더링
                         const rotation = (page.rotate + globalRotation) % 360;
                         const viewport = page.getViewport({ scale: 2.0, rotation: rotation });
 
@@ -704,15 +578,10 @@
                         const base64Image = ocrCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
                         
                         try {
-                            // 설정된 CSV 규칙 사용
-                            const prompt = mode === 'csv' 
-                                ? csvRule // 사용자가 설정한 규칙 적용
-                                : "Extract text directly.";
-                                
-                            pageText = await recognizeImageWithGemini(base64Image, 'image/jpeg', prompt);
+                            pageText = await recognizeImageWithGemini(base64Image, 'image/jpeg');
                         } catch (err) {
                             console.error(`Page ${i} OCR Error:`, err);
-                            pageText = `[Error: Page ${i} 처리 실패]`;
+                            pageText = `[Error: Page ${i} OCR 실패]`;
                         }
                     } else {
                         statusText.textContent = `텍스트 추출 중... (${i}/${totalPages} 페이지)`;
@@ -720,22 +589,20 @@
                         pageText = textContent.items.map(item => item.str).join(' ');
                     }
 
-                    if (mode !== 'csv') {
-                        pageText = cleanText(pageText);
-                        if (i > 1) fullText += `\n\n--- Page ${i} ---\n\n`;
-                        else fullText += `--- Page ${i} ---\n\n`;
-                    } else {
-                        if (i > 1) fullText += `\n\n`; 
-                        pageText = pageText.trim();
-                    }
+                    pageText = cleanText(pageText);
+                    
+                    if (i > 1) fullText += `\n\n--- Page ${i} ---\n\n`;
+                    else fullText += `--- Page ${i} ---\n\n`;
                     
                     fullText += pageText;
                     resultText.value = fullText;
                     resultText.scrollTop = resultText.scrollHeight;
 
+                    // 진행률
                     const percent = (i / totalPages) * 100;
                     loadingBar.style.width = percent + '%';
 
+                    // 쿨다운 (OCR 모드일 때만)
                     if (i < totalPages && useOCR) {
                         statusText.textContent = `API 안정화 대기 중... (${i}/${totalPages})`;
                         await sleep(2000); 
@@ -749,19 +616,14 @@
         }
 
         function finishOcr() {
-            statusText.textContent = "완료!";
+            statusText.textContent = "텍스트 추출 완료!";
             statusText.classList.remove('animate-pulse');
             statusText.classList.add('text-green-600', 'font-bold');
             loadingBar.style.width = '100%';
             
             actionButtons.classList.remove('opacity-50', 'pointer-events-none');
-            
-            btnStartOcr.disabled = false;
-            btnStartCsv.disabled = false;
-            btnStartOcr.classList.remove('opacity-50');
-            btnStartCsv.classList.remove('opacity-50');
-            
-            showToast("변환이 완료되었습니다.");
+            btnStartOcr.classList.add('hidden'); // 완료 후 버튼 숨김
+            showToast("모든 작업이 완료되었습니다.");
         }
 
         function handleOcrError(error) {
@@ -771,11 +633,8 @@
             statusText.classList.remove('animate-pulse');
             
             btnStartOcr.disabled = false;
-            btnStartCsv.disabled = false;
-            btnStartOcr.classList.remove('opacity-50');
-            btnStartCsv.classList.remove('opacity-50');
-            
-            showToast("작업 중 오류가 발생했습니다. (404 오류 시 모델을 2.5로 변경하세요)", true);
+            btnStartOcr.innerHTML = '<i class="fas fa-redo"></i> 다시 시도';
+            showToast("텍스트 추출 중 오류가 발생했습니다.", true);
         }
 
         function cleanText(text) {
@@ -783,14 +642,14 @@
             return text.replace(/\n{3,}/g, '\n\n').trim();
         }
 
-        async function recognizeImageWithGemini(base64Image, mimeType = 'image/jpeg', prompt = "Extract text directly.") {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`;
+        async function recognizeImageWithGemini(base64Image, mimeType = 'image/jpeg') {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
             const payload = {
                 contents: [{
                     role: "user",
                     parts: [
-                        { text: prompt },
+                        { text: "이 이미지에 있는 모든 텍스트를 추출해줘. 레이아웃을 최대한 유지하고, 텍스트 내용만 출력해. 부가적인 설명은 하지 마." },
                         { inlineData: { mimeType: mimeType, data: base64Image } }
                     ]
                 }]
@@ -809,8 +668,6 @@
 
                     if (!response.ok) {
                         if (response.status === 429) throw new Error("API 요청 한도 초과 (잠시 후 다시 시도)");
-                        // 404 에러 상세 처리
-                        if (response.status === 404) throw new Error("모델을 찾을 수 없습니다 (404). 설정에서 모델을 변경해주세요.");
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     
@@ -841,10 +698,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            
-            const ext = currentOutputMode === 'csv' ? '_data.csv' : '_extracted.txt';
-            a.download = fileNameDisplay.textContent.split('.')[0] + ext;
-            
+            a.download = fileNameDisplay.textContent.split('.')[0] + '_extracted.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
