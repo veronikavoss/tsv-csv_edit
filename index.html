@@ -1398,48 +1398,109 @@
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
 
             function renderModalContent() {
-                let rowsHtml = mappingRules.map((rule, index) => {
+                // 테이블 헤더 생성
+                let tableHtml = `
+                    <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background-color: #f1f3f5; color: #333;">
+                                <th style="border: 1px solid #dee2e6; padding: 10px; width: 50px; text-align: center;">#</th>
+                                <th style="border: 1px solid #dee2e6; padding: 10px; width: 200px; text-align: center;">신용카드매입자료 헤더</th>
+                                <th style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">규칙 / 함수 (2행 기준)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // 테이블 본문 생성 (mappingRules 기반)
+                const rowsHtml = mappingRules.map((rule, index) => {
                     let inputHtml = '';
+                    
                     if (rule.type === 'header' || rule.type === 'card_name') {
-                        inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="candidates" value="${rule.candidates ? rule.candidates.join(',') : ''}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">
-                        <div style="font-size:11px;color:#888;margin-top:2px;">${rule.type === 'card_name' ? '감지할 카드사명을 쉼표(,)로 구분하여 입력' : '쉼표(,)로 구분하여 입력'}</div>`;
+                        // 헤더 및 카드사명: 텍스트 영역 (Candidates 편집)
+                        const value = rule.candidates ? rule.candidates.join(',') : '';
+                        const placeholder = rule.type === 'card_name' ? '감지할 카드사명 입력' : '매핑할 원본 헤더명 입력';
+                        inputHtml = `
+                            <textarea class="mapping-input" 
+                                data-index="${index}" 
+                                data-key="candidates" 
+                                placeholder="${placeholder}"
+                                style="width:100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-family: inherit; font-size: 12px; resize: vertical; min-height: 40px;">${value}</textarea>
+                        `;
                     } else if (rule.type === 'fixed') {
-                        inputHtml = `<input type="text" class="mapping-input" data-index="${index}" data-key="value" value="${rule.value}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;">`;
-                    } else {
-                        inputHtml = `<span style="color:#999;font-size:12px;">(자동 계산/고정 로직)</span>`;
+                        // 고정값: 입력 필드
+                        inputHtml = `
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #495057; font-weight: bold; white-space: nowrap;">[고정값]</span>
+                                <input type="text" class="mapping-input" 
+                                    data-index="${index}" 
+                                    data-key="value" 
+                                    value="${rule.value}" 
+                                    style="flex: 1; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px;">
+                            </div>
+                        `;
+                    } else if (rule.type === 'formula') {
+                        // 함수: 읽기 전용 표시 (2행 기준으로 미리보기 생성)
+                        let formulaPreview = '';
+                        try {
+                            if (typeof rule.formula === 'function') {
+                                formulaPreview = rule.formula(2); // 2행 기준 수식 생성
+                            }
+                        } catch (e) {
+                            formulaPreview = '수식 오류';
+                        }
+                        
+                        inputHtml = `
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #0d47a1; font-weight: bold; white-space: nowrap;">[조건부 함수]</span>
+                                <span style="font-family: monospace; color: #666; font-size: 12px;">${formulaPreview}</span>
+                            </div>
+                        `;
+                    } else if (rule.type === 'empty') {
+                        // 비워둠
+                        inputHtml = `<span style="color: #adb5bd; font-style: italic; font-size: 12px;">(비워둠)</span>`;
                     }
 
+                    // 라벨에서 괄호 부분 스타일링 (선택사항)
+                    let labelDisplay = rule.label;
+
                     return `
-                        <div style="display:flex;align-items:flex-start;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:10px;">
-                            <div style="width:180px;font-weight:bold;font-size:13px;padding-top:6px;">${rule.label}</div>
-                            <div style="flex:1;">${inputHtml}</div>
-                        </div>
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #868e96;">${index + 1}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; font-weight: 600; color: #343a40;">${labelDisplay}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">${inputHtml}</td>
+                        </tr>
                     `;
                 }).join('');
+
+                tableHtml += rowsHtml + '</tbody></table>';
                 
                 const container = modal.querySelector('.mapping-rows-container');
-                if(container) container.innerHTML = rowsHtml;
-                return rowsHtml;
+                if(container) container.innerHTML = tableHtml;
+                return tableHtml;
             }
 
-            const initialRowsHtml = renderModalContent();
+            const initialTableHtml = renderModalContent();
 
             modal.innerHTML = `
-                <div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:800px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-                    <h2 style="margin-bottom:5px;">매핑 구성요소 편집</h2>
-                    <p style="color:#666;font-size:13px;margin-bottom:20px;">신용카드매입자료 변환 시 사용할 규칙을 설정합니다.</p>
-                    <div class="mapping-rows-container" style="overflow-y:auto;flex:1;padding-right:10px;">
-                        ${initialRowsHtml}
+                <div style="background:white;padding:30px;border-radius:12px;width:95%;max-width:1000px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+                    <div style="margin-bottom: 20px;">
+                        <h2 style="margin-bottom:5px; color: #333;">매핑 구성요소 편집</h2>
+                        <p style="color:#666;font-size:13px;">신용카드매입자료 변환 시 각 항목에 적용될 규칙을 설정합니다.</p>
                     </div>
-                    <div style="margin-top:20px;display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #eee;">
+                    
+                    <div class="mapping-rows-container" style="overflow-y:auto; flex:1; border: 1px solid #dee2e6; border-radius: 4px; margin-bottom: 20px;">
+                        ${initialTableHtml}
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #eee;">
                         <div style="display:flex; gap: 5px;">
-                            <button class="btn-export" style="padding:8px 15px;background:#17a2b8;color:white;border:none;border-radius:6px;cursor:pointer;">📤 내보내기</button>
-                            <button class="btn-import" style="padding:8px 15px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;">📥 가져오기</button>
+                            <button class="btn-export" style="padding:8px 15px;background:#17a2b8;color:white;border:none;border-radius:6px;cursor:pointer; font-size: 13px;">📤 내보내기</button>
+                            <button class="btn-import" style="padding:8px 15px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer; font-size: 13px;">📥 가져오기</button>
                             <input type="file" id="importRuleFile" accept=".csv" style="display:none">
                         </div>
                         <div>
                             <button class="btn-close" style="padding:8px 20px;background:#6c757d;color:white;border:none;border-radius:6px;margin-right:10px;cursor:pointer;">취소</button>
-                            <button class="btn-save" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">저장</button>
+                            <button class="btn-save" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer; font-weight: bold;">저장</button>
                         </div>
                     </div>
                 </div>
@@ -1447,7 +1508,10 @@
 
             document.body.appendChild(modal);
 
+            // ... (이하 이벤트 핸들러 로직은 기존과 동일하지만, input 선택자 호환성을 위해 유지/확인) ...
+            
             modal.querySelector('.btn-export').onclick = () => {
+                // 내보내기 로직 (candidates textarea의 값을 배열로 변환)
                 const inputs = modal.querySelectorAll('.mapping-input');
                 const tempRules = JSON.parse(JSON.stringify(mappingRules));
                 
@@ -1470,7 +1534,6 @@
                     candidates: rule.candidates ? rule.candidates.join(',') : ''
                 }));
 
-                // 날짜 포맷 생성 (yyyy-mm-dd-hhmm)
                 const now = new Date();
                 const yyyy = now.getFullYear();
                 const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -1515,7 +1578,9 @@
                                 }
                             });
                             
-                            renderModalContent();
+                            // 테이블 다시 렌더링
+                            const container = modal.querySelector('.mapping-rows-container');
+                            container.innerHTML = renderModalContent();
                             
                             const toast = document.createElement('div');
                             toast.textContent = `✅ ${updatedCount}개의 규칙을 불러왔습니다. '저장'을 눌러 확정하세요.`;
@@ -1525,7 +1590,6 @@
                         }
                     },
                     error: function(err) {
-                        // Use a custom modal instead of alert()
                         showErrorModal('CSV 파싱 오류', err.message);
                     }
                 });
