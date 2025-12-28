@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV/TSV 데이터 편집 도구</title>
+    <title>CSV/TSV 데이터 편집 도구 v1.9</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         * {
@@ -661,7 +661,7 @@
                 </div>
             </div>
 
-            <h1>CSV/TSV 데이터 편집 도구</h1>
+            <h1>CSV/TSV 데이터 편집 도구 v1.9</h1>
             <p>CSV 또는 TSV 파일을 업로드하거나 데이터를 붙여넣어 편집하세요.</p>
             
             <div class="header-btn-wrapper">
@@ -756,6 +756,28 @@
 
         const patchNotesData = [
             {
+                version: 'v1.9',
+                date: '2025-12-06',
+                content: [
+                    '카드사 매핑 실패 시 마지막 행 첫 번째 열 데이터를 카드사명으로 사용하는 폴백 기능 추가'
+                ]
+            },
+            {
+                version: 'v1.8',
+                date: '2025-12-06',
+                content: [
+                    '매핑 데이터 업데이트 (경남은행, 비씨카드주식회사, 현금영수증 등 추가)',
+                    '카드번호/승인일자 인식 패턴 추가'
+                ]
+            },
+            {
+                version: 'v1.7',
+                date: '2025-12-06',
+                content: [
+                    '매핑구성요소 업데이트'
+                ]
+            },
+            {
                 version: 'v1.6',
                 date: '2025-12-04',
                 content: [
@@ -805,9 +827,9 @@
 
         const defaultMappingRules = [
             { id: 'col1', label: '카드종류(1자리)', type: 'fixed', value: '1' },
-            { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name', candidates: ['BNK경남은행', 'KB국민카드', 'NH농협카드', '롯데카드', '삼성카드', '신한카드', '현대카드', '하나카드', '기업비씨카드', '비씨카드', '우체국체크카드', '우체국'] },
-            { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호', '이용카드', '카드명(카드번호뒤4자리)', '카드회원번호'] },
-            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자', '매출일', '이용일자', '이용일', '거래일자', '거래일', '승인일시', '승인일자', '승인일', '접수일자'] },
+            { id: 'col2', label: '신용카드사명(30자리이내)', type: 'card_name', candidates: ['BNK경남은행', '경남은행', '비씨카드주식회사', '경남은행비씨카드', '경남비씨', 'KB국민카드', 'NH농협카드', '롯데카드', '삼성카드', '신한카드', '우리카드', '현대카드', '하나카드', '기업비씨카드', '비씨카드', '우체국체크카드', '우체국', '현금영수증 세액공제 내역'] },
+            { id: 'col3', label: '신용카드번호(19자리이내)', type: 'header', candidates: ['카드번호', '이용카드', '카드명(카드번호뒤4자리)', '카드회원번호', '이용카드(뒤4자리)'] },
+            { id: 'col4', label: '승인일자', type: 'header', candidates: ['매출일자', '매출일', '이용일자', '이용일', '거래일자', '거래일', '승인일시', '승인일자', '승인일', '접수일자', '매입일시'] },
             { id: 'col5', label: '사업자등록번호', type: 'header', candidates: ['사업자등록번호', '사업자번호', '가맹점사업자번호'] },
             { id: 'col6', label: '거래처명(15자리이내)', type: 'header', candidates: ['가맹점명', '이용하신곳', '이용가맹점', '상호'] },
             { id: 'col7', label: '거래처유형', type: 'empty' },
@@ -1632,15 +1654,32 @@
             if (csvData.length > 0) {
                 const lastRow = csvData[csvData.length - 1];
                 const lastRowValues = Object.values(lastRow).map(v => String(v).replace(/\s/g, ''));
+                let found = false;
 
+                // 1. 후보군에서 검색
                 for (const name of knownCardNames) {
                     const cleanName = name.replace(/\s/g, '');
                     if (lastRowValues.some(v => v.includes(cleanName))) {
                         detectedCardName = name;
-                        dataToMap = csvData.slice(0, -1);
-                        console.log(`마지막 행에서 카드사 감지됨: ${name}. 마지막 행 제거 후 매핑 진행.`);
+                        found = true;
                         break;
                     }
+                }
+
+                // 2. 실패 시 폴백: 첫 번째 열 데이터 사용
+                if (!found && headers.length > 0) {
+                    const firstColVal = lastRow[headers[0]];
+                    if (firstColVal) {
+                        detectedCardName = String(firstColVal).trim();
+                        // 실패 시에도 값을 찾은 것으로 간주 (폴백)
+                        found = true; 
+                    }
+                }
+
+                // 3. 카드사명(또는 폴백 값)을 찾았다면 마지막 행을 데이터에서 제외
+                if (found) {
+                     dataToMap = csvData.slice(0, -1);
+                     console.log(`카드사명 감지(또는 폴백 적용): ${detectedCardName}`);
                 }
             }
 
